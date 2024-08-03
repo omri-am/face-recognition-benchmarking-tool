@@ -1,0 +1,4 @@
+tests_datasets/
+__pycache__/
+FacesBenchmarkUtils/.DS_Store
+FacesBenchmarkUtils/__pycache__/
