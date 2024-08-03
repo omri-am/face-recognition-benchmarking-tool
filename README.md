@@ -1,4 +1,4 @@
-# PyTorchBenchmark
+# FacesBenchmark
 
 The PyTorch Benchmark proejct is still under construction. Please come back again soon!
 
