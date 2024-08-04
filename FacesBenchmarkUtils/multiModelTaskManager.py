@@ -7,6 +7,33 @@ import torchvision.transforms as transforms
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from datetime import date
+from torch.utils.data import DataLoader, Dataset
+from torch.cuda.amp import autocast, GradScaler
+from .implementedTasks import *
+
+class ImageDataset(Dataset):
+    def __init__(self, image_paths, images_folder_path, model):
+        self.image_paths = list(image_paths)
+        self.images_folder_path = images_folder_path
+        self.model = model
+
+    def __len__(self):
+        return len(self.image_paths)
+
+    def __getitem__(self, idx):
+        image_path = self.image_paths[idx]
+        full_image_path = os.path.join(self.images_folder_path, image_path)
+        image_tensor = self.__open_image(self.model, full_image_path)
+        return image_tensor.squeeze(0), image_path
+
+    def __open_image(self, model, image_path):
+        if hasattr(model, 'preprocess_image'):
+            tensor = model.preprocess_image(image_path)
+        else:
+            image = Image.open(image_path).convert('RGB')
+            tensor = model.preprocess(image)
+        return tensor
 
 class MultiModelTaskManager():
     """
@@ -19,7 +46,7 @@ class MultiModelTaskManager():
         images_tensors: Dictionary storing image tensors, by model.
         tasks_performance_dfs: Dictionary storing task results as dataframes, by task type.
     """
-    def __init__(self, models, tasks):
+    def __init__(self, models, tasks, batch_size=32, use_mixed_precision=False):
         self.tasks = {}
         self.add_tasks(tasks)
         self.models = {}
@@ -27,7 +54,8 @@ class MultiModelTaskManager():
         self.model_task_distances_dfs = {model: {task_name: task.pairs_df for task_name, task in self.tasks.items()} for model in self.models}
         self.images_tensors = {model: {} for model in self.models}
         self.tasks_performance_dfs = {task: None for task in self.tasks}
-
+        self.batch_size = batch_size
+        self.use_mixed_precision = use_mixed_precision
 
     def __repr__(self):
         return (f"MultiModelTaskManager(models={list(self.models.keys())}, "
@@ -68,14 +96,24 @@ class MultiModelTaskManager():
             return model.preprocess_image(image_path)
         else:
             image = Image.open(image_path).convert('RGB')
-            return model.preprocess(image).unsqueeze(0)
+            return model.preprocess(image)
 
     def __get_pairs_output(self, model, pairs_df, images_folder_path):
         images_paths = self.__extract_img_paths(pairs_df)
-        for img in images_paths:
-            if img not in self.images_tensors[model.name]:
-                image_tensor = self.__open_image(model, os.path.join(images_folder_path, img))
-                self.images_tensors[model.name][img] = model.get_output(image_tensor)
+        dataset = ImageDataset(images_paths, images_folder_path, model)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
+
+        with torch.no_grad():
+            for image_tensors, image_names in dataloader:
+                image_tensors = image_tensors.to(model.device)
+                if self.use_mixed_precision:
+                    with torch.cuda.amp.autocast():
+                        outputs = model.get_output(image_tensors)
+                else:
+                    outputs = model.get_output(image_tensors)
+
+                for img, output in zip(image_names, outputs):
+                    self.images_tensors[model.name][img] = output.cpu().numpy()
         return self.images_tensors[model.name]
 
     def __compute_distances(self, model_name, distance_metric, df):
@@ -83,7 +121,16 @@ class MultiModelTaskManager():
         for _, row in df.iterrows():
             img1_name = row['img1']
             img2_name = row['img2']
-            d = distance_metric(self.images_tensors[model_name][img1_name], self.images_tensors[model_name][img2_name])
+
+            tensor1 = self.images_tensors[model_name][img1_name]
+            tensor2 = self.images_tensors[model_name][img2_name]
+            
+            if tensor1.ndim == 1:
+                tensor1 = tensor1.reshape(1, -1)
+            if tensor2.ndim == 1:
+                tensor2 = tensor2.reshape(1, -1)
+
+            d = distance_metric(tensor1, tensor2)
             distances.append(d)
         return distances
 
@@ -91,13 +138,13 @@ class MultiModelTaskManager():
         if task_name not in self.tasks:
             raise Exception("Task Not Found!")
         torch.save(self.images_tensors[model_name], os.path.join(path, f"{date.today()}_{model_name}_{task_name}_tensors.pth"))
-        print(f"Saved {task_name} tensors for {model_name} to drive.")
+        print(f"Saved {task_name} tensors for {model_name} dataframe.")
 
     def save_task_performance_df_to_drive(self, task_name, path):
         if task_name not in self.tasks:
             raise Exception("Task Not Found!")
         self.tasks_performance_dfs[task_name].to_csv(os.path.join(path, f"{date.today()}_{task_name}_performance.csv"))
-        print(f"Saved {task_name} performance to drive.")
+        print(f"Saved {task_name} performance dataframe.")
 
     def compute_tensors(self, model_name, task_name, print_log=False):
         if task_name not in self.tasks:
@@ -140,6 +187,8 @@ class MultiModelTaskManager():
         for model_name in self.models:
             self.run_all_tasks_with_model(model_name)
         print(f"Processed all tasks for all models")
+        for task_name, df in self.tasks_performance_dfs.items():
+            df.to_csv(os.path.join(os.getcwd(), f"{date.today()}_{task_name}_performance.csv"))
         self.plot_superplot()
 
     def plot_superplot(self, model_name=None):
@@ -199,4 +248,4 @@ class MultiModelTaskManager():
             plt.xlabel('Image 1')
             plt.ylabel('Image 2')
             plt.legend()
-            plt.show()  
+            plt.show()

@@ -3,10 +3,13 @@ from clipModel import *
 from dinoModel import *
 
 def main():
+    torch.cuda.empty_cache()
     ## models ##
     
     clip_model = CLIPModel("clip")
-    dino_model = DinoModel("dino")
+    vit8 = DinoModel("dino-vitb8")
+    vit16 = DinoModel("dino-vitb16", version = "facebook/dino-vitb16")
+    dinoV2 = DinoModel("dinov2-large", version = "facebook/dinov2-large")
 
     ## tasks ##
 
@@ -39,7 +42,8 @@ def main():
     ## multi model manager ##
 
     multimodel_manager = MultiModelTaskManager(
-        models = [clip_model, dino_model], 
+        # models = [dino_model], 
+        models = [vit16, vit8, dinoV2],
         tasks=[upright_acc, inverted_acc, same_diff_task])
 
     multimodel_manager.run_all_tasks_all_models()
