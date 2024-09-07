@@ -159,7 +159,6 @@ class MultiModelTaskManager():
     def export_performances_by_task_type(self, path):
         res_by_task_type = self.create_task_type_dataframes()
         for task_type, res in res_by_task_type.items():
-            res.reset_index()
             res.to_csv(os.path.join(path, f"{date.today()}_all_{task_type}_results.csv"))
 
     def compute_tensors(self, model_name, task_name, print_log=False):

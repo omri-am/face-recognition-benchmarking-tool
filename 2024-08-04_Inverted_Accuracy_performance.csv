@@ -1,4 +1,0 @@
-,Model Name,Accuracy,Optimal Threshold,AUC,Task
-0,dino-vitb16,0.56667,0.9997,0.5612,Inverted_Accuracy
-1,dino-vitb8,0.58333,0.99995,0.56269,Inverted_Accuracy
-2,dinov2-large,0.56,0.98968,0.5692,Inverted_Accuracy
