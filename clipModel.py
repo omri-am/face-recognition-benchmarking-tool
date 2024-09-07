@@ -24,6 +24,7 @@ class CLIPModel(BaseModel):
         self.model.eval()
 
     def get_output(self, image_tensor):
+        image_tensor = image_tensor.unsqueeze(0)
         with torch.no_grad():
             image_features = self.model.encode_image(image_tensor.to(self.device))
         return image_features

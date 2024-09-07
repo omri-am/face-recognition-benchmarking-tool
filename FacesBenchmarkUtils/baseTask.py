@@ -63,5 +63,5 @@ class BaseTask(ABC):
             raise e
 
     @abstractmethod
-    def compute_task_performance(self, distances):
+    def compute_task_performance(self, pairs_distances_df):
         pass

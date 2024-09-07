@@ -75,47 +75,47 @@ class BaseModel(ABC):
 
 ## VGG (includes parallel)
 
-class Vgg16ModelFC7(BaseModel):
-    def __init__(self, model_path, extract_layer=34):
-        super().__init__(model_path=model_path, extract_layer=extract_layer)
+# class Vgg16Model(BaseModel):
+#     def __init__(self, model_path, extract_layer=34):
+#         super().__init__(model_path=model_path, extract_layer=extract_layer)
 
-    def _build_model(self):
-        model = models.vgg16(weights=None)
-        num_features = model.classifier[6].in_features
-        model.classifier[6] = nn.Linear(int(num_features), int(self.num_identities))
-        model.features = torch.nn.DataParallel(model.features)
-        self.model = model
+#     def _build_model(self):
+#         model = models.vgg16(weights=None)
+#         num_features = model.classifier[6].in_features
+#         model.classifier[6] = nn.Linear(int(num_features), int(self.num_identities))
+#         model.features = torch.nn.DataParallel(model.features)
+#         self.model = model
 
-    def get_output(self, input):
-        input = input.to(self.device)
-        self.model(input)
-        out = self.hook_output
-        out = out.detach().cpu()
-        out = out.reshape(1, -1)
-        return out
+#     def get_output(self, input):
+#         input = input.to(self.device)
+#         self.model(input)
+#         out = self.hook_output
+#         out = out.detach().cpu()
+#         out = out.reshape(1, -1)
+#         return out
 
-## Clip
+# ## Clip
 
-class CLIPModel(BaseModel):
-    def __init__(self, version = "ViT-B/32"):
-        self.version = version
-        super().__init__()
+# class CLIPModel(BaseModel):
+#     def __init__(self, version = "ViT-B/32"):
+#         self.version = version
+#         super().__init__()
 
-    def _build_model(self):
-        self.model, self.preprocess = clip.load(self.version, device=self.device)
-        self.model.eval()
+#     def _build_model(self):
+#         self.model, self.preprocess = clip.load(self.version, device=self.device)
+#         self.model.eval()
 
-    def get_output(self, image_tensor):
-        with torch.no_grad():
-            image_features = self.model.encode_image(image_tensor.to(self.device))
-        return image_features
+#     def get_output(self, image_tensor):
+#         with torch.no_grad():
+#             image_features = self.model.encode_image(image_tensor.to(self.device))
+#         return image_features
 
-    def preprocess_image(self, image_path):
-        image = Image.open(image_path).convert('RGB')  # Ensure the image is in RGB format
-        return self.preprocess(image).unsqueeze(0)
+#     def preprocess_image(self, image_path):
+#         image = Image.open(image_path).convert('RGB')  # Ensure the image is in RGB format
+#         return self.preprocess(image).unsqueeze(0)
 
-## Dino
-class DinoModel(BaseModel):
+# ## Dino
+# class DinoModel(BaseModel):
     def __init__(self, version = 'dino_vits16'):
         self.version = version
         super().__init__(model_path=model_path, extract_layer=extract_layer)

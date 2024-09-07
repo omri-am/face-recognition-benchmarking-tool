@@ -34,10 +34,8 @@ class BaseModel(ABC):
     def _load_model(self):
         checkpoint = torch.load(self.weights_path, map_location=self.device)
         state_dict = checkpoint.get('state_dict', checkpoint)
-        if isinstance(self.model, nn.DataParallel):
-            self.model.module.load_state_dict(state_dict)
-        else:
-            self.model.load_state_dict(state_dict)
+        state_dict = state_dict = {k.replace("module.", ""): v for k, v in state_dict.items()}
+        self.model.load_state_dict(state_dict)
 
         if torch.cuda.device_count() > 1:
             self.model = nn.DataParallel(self.model)
@@ -58,7 +56,7 @@ class BaseModel(ABC):
         self.hook_output = input[0]
 
     @abstractmethod
-    def get_output(self, input):
+    def get_output(self, image_tensor):
         pass
 
     def to(self):

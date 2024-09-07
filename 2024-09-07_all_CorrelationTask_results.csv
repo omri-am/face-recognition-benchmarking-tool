@@ -1,0 +1,10 @@
+,Model Name,Correlation Score,Task
+0,VGG16-trained,0.66885,Same Diff: International Celebs
+1,clip,0.63282,Same Diff: International Celebs
+2,dinov2-base,0.75091,Same Diff: International Celebs
+0,VGG16-trained,0.62577,Same Diff DP: International Celebs
+1,clip,0.57967,Same Diff DP: International Celebs
+2,dinov2-base,0.70952,Same Diff DP: International Celebs
+0,VGG16-trained,0.51377,Same Diff SP: International Celebs
+1,clip,0.36113,Same Diff SP: International Celebs
+2,dinov2-base,0.55572,Same Diff SP: International Celebs

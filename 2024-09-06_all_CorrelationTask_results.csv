@@ -1,0 +1,7 @@
+,Model Name,Correlation Score
+0,VGG16-trained,0.66885
+1,clip,0.63282
+0,VGG16-trained,0.62577
+1,clip,0.57967
+0,VGG16-trained,0.51377
+1,clip,0.36113

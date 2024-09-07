@@ -1,4 +1,6 @@
-from baseModel import *
+from FacesBenchmarkUtils import *
+from torchvision import models
+import torch.nn as nn
 
 class Vgg16Model(BaseModel):
     def __init__(self, name: str, weights_path: str, extract_layer: int = 34, preprocess_function=None):
@@ -10,10 +12,11 @@ class Vgg16Model(BaseModel):
         model.classifier[6] = nn.Linear(int(num_features), int(self.num_identities))
         self.model = model
 
-    def get_output(self, input):
-        input = input.to(self.device)
-        self.model(input)
-        out = self.hook_output
-        out = out.detach().cpu()
-        out = out.reshape(1, -1)
-        return out
+    def get_output(self, image_tensor):
+        image_tensor = image_tensor.to(self.device)
+        image_tensor = image_tensor.unsqueeze(0)
+        with torch.no_grad():
+            _ = self.model(image_tensor)
+            out = self.hook_output
+            out = out.detach().cpu()
+            return out.view(1, -1)
