@@ -26,8 +26,9 @@ class AccuracyTask(BaseTask):
         return pd.DataFrame(
             {"Accuracy": [round(accuracy, 5)],
             "Optimal Threshold": [round(optimal_threshold,5)],
-            "AUC": [round(auc, 5)]
-        })
+            "AUC": [round(auc, 5)],
+            "Distance Metric": [self.distance_metric.__name__]
+            })
 
 class CorrelationTask(BaseTask):
     """
@@ -41,7 +42,10 @@ class CorrelationTask(BaseTask):
 
     def compute_task_performance(self, pairs_distances_df):
         correlation = self.correlation_metric(pairs_distances_df["nn_computed_distance"], self.pairs_df['distance'])[0, 1]
-        return pd.DataFrame({"Correlation Score": [round(correlation, 5)]})
+        return pd.DataFrame({"Correlation Score": [round(correlation, 5)],
+                             "Distance Metric": [self.distance_metric.__name__],
+                             "Correlation Metric":[self.correlation_metric.__name__]
+                             })
     
 class RelativeDifferenceTask(BaseTask):
     """
@@ -58,12 +62,13 @@ class RelativeDifferenceTask(BaseTask):
         group2 = pairs_distances_df[pairs_distances_df[self.group_column] == pairs_distances_df[self.group_column].unique()[1]]
 
         # Compute the mean of each group (ignoring non-numeric columns)
-        group1_mean = group1.mean(numeric_only=True)
-        group2_mean = group2.mean(numeric_only=True)
+        group1_mean = group1['nn_computed_distance'].mean()
+        group2_mean = group2['nn_computed_distance'].mean()
         
         relative_difference = (group1_mean - group2_mean) / (group1_mean + group2_mean)
         return pd.DataFrame({
-            "Group 1 Mean": [round(group1_mean)],
-            "Group 2 Mean": [round(group2_mean)],
-            "Relative Difference": [round(relative_difference, 5)]
-        })
+            "Group 1 Mean": [group1_mean],
+            "Group 2 Mean": [group2_mean],
+            "Relative Difference": [round(relative_difference, 5)],
+            "Distance Metric": [self.distance_metric.__name__]
+            })

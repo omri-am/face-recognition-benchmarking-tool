@@ -4,7 +4,7 @@ from torch import nn
 import torchvision.transforms as transforms
 
 class BaseModel(ABC):
-    def __init__(self, name: str, weights_path: str = None, extract_layer: int = None, preprocess_function = None):
+    def __init__(self, name: str, weights_path: str = None, extract_layer: str = None, preprocess_function = None):
         self.set_preprocess_function(preprocess_function)
         self.hook_output = None
         self.name = name
@@ -34,7 +34,7 @@ class BaseModel(ABC):
     def _load_model(self):
         checkpoint = torch.load(self.weights_path, map_location=self.device)
         state_dict = checkpoint.get('state_dict', checkpoint)
-        state_dict = state_dict = {k.replace("module.", ""): v for k, v in state_dict.items()}
+        state_dict = {k.replace("module.", ""): v for k, v in state_dict.items()}
         self.model.load_state_dict(state_dict)
 
         if torch.cuda.device_count() > 1:
@@ -44,16 +44,25 @@ class BaseModel(ABC):
 
     def _register_hook(self):
         if self.extract_layer is not None:
-            for idx, layer in enumerate(self.model.modules()):
-                if idx == self.extract_layer - 1:
-                    layer.register_forward_hook(self.hook_fn)
-                    break
+            layer = self._get_layer(self.extract_layer)
+            if layer:
+                layer.register_forward_hook(self.hook_fn)
+
+    def _get_layer(self, layer_name):
+        """
+        Get the layer by name (e.g., 'features.30', 'classifier.3') or by index.
+        This will handle complex architectures like ResNet, VGG, etc.
+        """
+        if layer_name is None:
+            return
+        modules = dict(self.model.named_modules())
+        if layer_name in modules:
+            return modules[layer_name]
+        else:
+            raise ValueError(f"Layer {layer_name} not found in the model.")
 
     def hook_fn(self, module, input, output):
         self.hook_output = output
-
-    def hook_fn_input(self, module, input, output):
-        self.hook_output = input[0]
 
     @abstractmethod
     def get_output(self, image_tensor):
@@ -75,4 +84,3 @@ class BaseModel(ABC):
             ])
         else:
             self.preprocess = preprocess_function
-
