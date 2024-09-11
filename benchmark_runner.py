@@ -2,7 +2,6 @@ from FacesBenchmarkUtils import *
 from clipModel import *
 from dinoModel import *
 from vgg16Model import *
-from resNetModel import *
 
 def main():
     torch.cuda.empty_cache()
