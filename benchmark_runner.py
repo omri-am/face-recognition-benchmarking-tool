@@ -162,28 +162,32 @@ def main():
     ## multi model manager ##
 
     multimodel_manager = MultiModelTaskManager(
-        models = [vgg16_trained_fc7, 
-                  vgg16_trained_avgpool, 
-                  vgg16_untrained_fc7, 
-                  vgg16_untrained_avgpool,
-                  clip_model, 
-                  dinoV2, 
-                  vit8, 
-                  vit16],
-        tasks = [lfw_acc,
-                 upright_acc, 
-                 inverted_acc, 
-                 same_diff_task, 
-                 same_diff_DP_task,
-                 same_diff_SP_task,
-                 same_diff_int_task,
-                 same_diff_DP_int_task,
-                 same_diff_SP_int_task,
-                 familiar_il_task,
-                 unfamiliar_il_task,
-                 other_race_caucasian, 
-                 other_race_asian,
-                 thatcher_task])
+        models = [
+            vgg16_trained_fc7, 
+            vgg16_trained_avgpool, 
+            vgg16_untrained_fc7, 
+            vgg16_untrained_avgpool,
+            clip_model, 
+            dinoV2, 
+            vit8, 
+            vit16
+            ],
+        tasks = [
+            lfw_acc,
+            upright_acc, 
+            inverted_acc, 
+            same_diff_task, 
+            same_diff_DP_task,
+            same_diff_SP_task,
+            same_diff_int_task,
+            same_diff_DP_int_task,
+            same_diff_SP_int_task,
+            familiar_il_task,
+            unfamiliar_il_task,
+            other_race_caucasian, 
+            other_race_asian,
+            thatcher_task
+            ])
 
     multimodel_manager.run_all_tasks_all_models(export_path = os.path.join(os.getcwd(), f'results/{date.today()}'))
 

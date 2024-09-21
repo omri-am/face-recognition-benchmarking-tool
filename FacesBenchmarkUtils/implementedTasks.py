@@ -1,6 +1,7 @@
 from .baseTask import *
 import matplotlib.pyplot as plt
 import seaborn as sns
+import math
 
 class AccuracyTask(BaseTask):
     """
@@ -36,7 +37,8 @@ class AccuracyTask(BaseTask):
         for task_name, task_df in performances.groupby('Task Name'):
             plt.figure(figsize=(12, 8))
             sns.barplot(x='Model Name', y='Accuracy', hue='Model Name', data=task_df)
-            plt.title(f'Accuracy Comparison for Task: {task_name}')
+            plt.title(f'Accuracy Comparison for Task: {task_name}',
+                      fontsize = 20)
             plt.ylabel('Accuracy')
             plt.xlabel('Model')
             plt.ylim(0, 1)
@@ -63,22 +65,37 @@ class CorrelationTask(BaseTask):
                              })
     
     def plot(output_dir, performances, distances, *optional):
-        for task_name, task_df in performances.groupby('Task Name'):
-            for model_name, task_model_df in task_df.groupby('Model Name'):
+        for task_name, task_df in performances.groupby('Task Name'):            
+            num_models = task_df['Model Name'].nunique()
+            cols = math.ceil(math.sqrt(num_models))
+            rows = math.ceil(num_models / cols)
 
+            min_y = min(distances[model_name][task_name]['nn_computed_distance'].min() for model_name in task_df['Model Name'].unique())
+            max_y = max(distances[model_name][task_name]['nn_computed_distance'].max() for model_name in task_df['Model Name'].unique())
+            fig, axs = plt.subplots(rows, cols, figsize=(10 * cols, 8 * rows), sharex=True)
+            axs = axs.flatten()
+
+            for idx, (model_name, task_model_df) in enumerate(task_df.groupby('Model Name')):
                 d_data = distances[model_name][task_name]
-
                 correlation_score = task_model_df['Correlation Score'].values[0]
-                plt.figure(figsize=(10, 8))
-                
-                sns.regplot(data=d_data, x='distance', y='nn_computed_distance', scatter=True, line_kws={'color': 'red'})                
-                plt.title(f'Correlation Scatter Plot for Task: {task_name} ({model_name})\nCorrelation Score: {correlation_score:.2f}')
-                plt.xlabel('Input File Distance')
-                plt.ylabel('NN Computed Distance')
-                plt.tight_layout()
 
-                plt.savefig(os.path.join(output_dir, f'{task_name}-{model_name}_correlation scatter.png'))
-                plt.close()
+                ax = axs[idx] if num_models > 1 else axs
+
+                sns.regplot(data=d_data, x='distance', y='nn_computed_distance', scatter=True, line_kws={'color': 'red'}, ax=ax)
+                ax.set_title(f'Model: {model_name}\nCorrelation Score: {correlation_score:.2f}',
+                             fontsize = 20)
+                ax.set_xlabel('Input File Distance')
+                ax.set_ylabel('NN Computed Distance')
+                ax.set_ylim(max(min_y-0.05, 0), min(max_y+0.05, 1))
+
+            for idx in range(num_models, rows * cols):
+                fig.delaxes(axs[idx])
+
+            plt.suptitle(f'Correlation Scatter Plot for Task: {task_name}\n\n', 
+                         fontsize = 24)
+            plt.tight_layout()
+            plt.savefig(os.path.join(output_dir, f'{task_name}_correlation superplot.png'))
+            plt.close()
     
 class RelativeDifferenceTask(BaseTask):
     """
@@ -110,7 +127,8 @@ class RelativeDifferenceTask(BaseTask):
         for task_name, task_df in performances.groupby('Task Name'):
             plt.figure(figsize=(12, 8))
             sns.barplot(x='Model Name', y='Relative Difference', hue='Model Name', data=task_df)
-            plt.title(f'Relative Difference Comparison for Task: {task_name}')
+            plt.title(f'Relative Difference Comparison for Task: {task_name}',
+                      fontsize = 20)
             plt.ylabel('Relative Difference')
             plt.xlabel('Model')
             plt.xticks(rotation=45)

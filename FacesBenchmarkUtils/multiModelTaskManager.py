@@ -127,7 +127,7 @@ class MultiModelTaskManager():
         task_type_groups = defaultdict(list)
 
         for task_name, task_info in self.tasks.items():
-            task_type = type(task_info).__name__
+            task_type = type(task_info)
             task_type_groups[task_type].append(task_name)
 
         task_type_dfs = {}
@@ -158,11 +158,14 @@ class MultiModelTaskManager():
 
     def export_model_results_by_task(self, export_path):
         res_by_task_type = self.group_tasks_by_type()
-        for task_type, res in res_by_task_type.items():
-            task_type_folder = os.path.join(export_path, task_type)
-            os.makedirs(task_type_folder, exist_ok=True)
-            res.to_csv(os.path.join(export_path, f'{date.today()}_all_{task_type}_results.csv'))
-            task_type.plot(task_type_folder, res, self.model_task_distances_dfs)
+        for task_class, res in res_by_task_type.items():
+            task_class_folder = os.path.join(export_path, task_class.__name__)
+            os.makedirs(task_class_folder, exist_ok=True)
+
+            # Exports results by task type
+            res.to_csv(os.path.join(export_path, f'{date.today()}_all_{task_class.__name__}_results.csv'))
+            # Uses the class's static plotting method
+            task_class.plot(task_class_folder, res, self.model_task_distances_dfs)
 
     def compute_tensors(self, model_name, task_name, print_log=False):
         if task_name not in self.tasks:
