@@ -171,7 +171,7 @@ class MultiModelTaskManager():
         selected_model = self.models[model_name]
         self.__get_pairs_output(selected_model, selected_task.pairs_df, selected_task.images_path)
         if print_log:
-            print(f"Processed all images for {task_name}")
+            print(f"Processed all images for {task_name}.")
 
     def run_task(self, model_name, task_name, export_path):
         # os.makedirs(os.path.join(export_path, f'results/{model_name}'), exist_ok=True)
@@ -200,17 +200,23 @@ class MultiModelTaskManager():
                 ignore_index=True
             )
 
+    def run_task_with_all_models(self, task_name, export_path=os.getcwd()):
+        for model_name in self.models:
+            self.run_task(model_name, task_name, export_path)
+        self.export_model_results_by_task(export_path)
+        self.plot_model_task_results(export_path)
+
     def run_all_tasks_with_model(self, model_name, export_path=os.getcwd()):
         for task_name in self.tasks:
             self.run_task(model_name, task_name, export_path)
-        print(f"Processed all tasks for {model_name}")
+        print(f"Processed all tasks for {model_name}.")
         # self.plot_model_task_results(model_name)
 
     def run_all_tasks_all_models(self, export_path=os.getcwd()):
         os.makedirs(export_path, exist_ok=True)
         for model_name in self.models:
             self.run_all_tasks_with_model(model_name)
-        print(f"Finished processing all the tasks for all the models")
+        print(f"Finished processing all the tasks for all the models.")
         self.export_model_results_by_task(export_path)
         self.plot_model_task_results(export_path)
 
@@ -220,6 +226,8 @@ class MultiModelTaskManager():
         for _ in self.models:
             self.plot_accuracy_tasks(output_dir)
             self.plot_correlation_tasks(output_dir)
+            self.plot_relative_difference_tasks(output_dir)
+        print("Finished plotting results.")
 
     def plot_accuracy_tasks(self, output_dir):
         os.makedirs(output_dir, exist_ok=True)
@@ -265,3 +273,20 @@ class MultiModelTaskManager():
                 # Save the scatter plot for the current task
                 plt.savefig(os.path.join(output_dir, f"{task_name}_correlation.png"))
                 plt.close()
+    
+    def plot_relative_difference_tasks(self, output_dir):
+        os.makedirs(output_dir, exist_ok=True)
+
+        for task_name, task_df in self.tasks_performance_dfs.items():
+            if not isinstance(self.tasks[task_name], RelativeDifferenceTask):
+                continue
+
+            plt.figure(figsize=(12, 8))
+            sns.barplot(x='Model Name', y='Relative Difference', hue='Model Name', data=task_df)
+            plt.title(f'Relative Difference Comparison for Task: {task_name}')
+            plt.ylabel('Relative Difference')
+            plt.xlabel('Model')
+            plt.xticks(rotation=45)
+            plt.tight_layout()
+            plt.savefig(os.path.join(output_dir, f'{task_name}_relative-diff_comparison.png'))
+            plt.close()

@@ -14,16 +14,18 @@ def main():
     vgg16_trained_fc7 = Vgg16Model(name="VGG16-trained-fc7",
                                    weights_path="/home/new_storage/experiments/face_memory_task/models/face_trained_vgg16_119.pth",
                                    extract_layer='classifier.5')
-    vgg16_trained_fc6 = Vgg16Model(name="VGG16-trained",
+    vgg16_trained_avgpool = Vgg16Model(name="VGG16-trained-avgpool",
                                    weights_path="/home/new_storage/experiments/face_memory_task/models/face_trained_vgg16_119.pth", 
                                    extract_layer='avgpool')
     vgg16_untrained_fc7 = Vgg16Model(name="VGG16-untrained-fc7",
                                      extract_layer='classifier.5')
+    vgg16_untrained_avgpool = Vgg16Model(name="VGG16-untrained-avgpool",
+                                         extract_layer='avgpool')
 
     ## tasks ##
 
     lfw_pairs = os.path.join(os.getcwd(), 'tests_datasets/LFW/lfw_test_pairs_only_img_names.txt')
-    lfw_images = os.path.join(os.getcwd(), 'tests_datasets/LFW/lfw_align_128')
+    lfw_images = os.path.join(os.getcwd(), 'tests_datasets/LFW/lfw-align-128')
 
     lfw_acc = AccuracyTask(
         pairs_file_path=lfw_pairs,
@@ -108,7 +110,22 @@ def main():
     
     sim_il_familiar_pairs_file_path = os.path.join(os.getcwd(), 'tests_datasets/similarity_perception_israeli_celebs/israeli_new_images_perception_familiar_distances.csv')
     sim_il_unfamiliar_pairs_file_path = os.path.join(os.getcwd(), 'tests_datasets/similarity_perception_israeli_celebs/israeli_new_images_perception_unfamiliar_distances.csv')
-    sim_il_images_path = os.path.join(os.getcwd(), 'tests_datasets/similarity_perception_israeli_celebs/intFacesLabMtcnn')
+    sim_il_images_path = os.path.join(os.getcwd(), 'tests_datasets/similarity_perception_israeli_celebs/newIsraeliFacesStimuliLabMtcnn')
+
+    familiar_il_task = CorrelationTask(
+        pairs_file_path = sim_il_familiar_pairs_file_path,
+        images_path = sim_il_images_path,
+        name = "IL Celebs: Familiar Performance",
+        distance_metric = pairwise.cosine_distances,
+        correlation_metric = np.corrcoef 
+    )
+    unfamiliar_il_task = CorrelationTask(
+        pairs_file_path = sim_il_unfamiliar_pairs_file_path,
+        images_path = sim_il_images_path,
+        name = "IL Celebs: Unfamiliar Performance",
+        distance_metric = pairwise.cosine_distances,
+        correlation_metric = np.corrcoef 
+    )
 
     caucasian_pairs_path = os.path.join(os.getcwd(), 'tests_datasets/other_race/vggface_other_race_same_caucasian.csv')
     asian_pairs_path = os.path.join(os.getcwd(), 'tests_datasets/other_race/vggface_other_race_same_asian.csv')
@@ -145,7 +162,14 @@ def main():
     ## multi model manager ##
 
     multimodel_manager = MultiModelTaskManager(
-        models = [vgg16_trained_fc7, vgg16_trained_fc6, vgg16_untrained_fc7, clip_model, dinoV2, vit8, vit16],
+        models = [vgg16_trained_fc7, 
+                  vgg16_trained_avgpool, 
+                  vgg16_untrained_fc7, 
+                  vgg16_untrained_avgpool,
+                  clip_model, 
+                  dinoV2, 
+                  vit8, 
+                  vit16],
         tasks = [lfw_acc,
                  upright_acc, 
                  inverted_acc, 
@@ -155,6 +179,8 @@ def main():
                  same_diff_int_task,
                  same_diff_DP_int_task,
                  same_diff_SP_int_task,
+                 familiar_il_task,
+                 unfamiliar_il_task,
                  other_race_caucasian, 
                  other_race_asian,
                  thatcher_task])
