@@ -1,4 +1,6 @@
 from .baseTask import *
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 class AccuracyTask(BaseTask):
     """
@@ -11,24 +13,37 @@ class AccuracyTask(BaseTask):
         self.true_label = true_label
 
     def compute_task_performance(self, pairs_distances_df):
-        pairs_distances_df["similarity"] = 1 - pairs_distances_df["nn_computed_distance"]
+        pairs_distances_df['similarity'] = 1 - pairs_distances_df['nn_computed_distance']
         y_true = self.pairs_df[self.true_label]
 
-        auc = roc_auc_score(y_true, pairs_distances_df["similarity"])
+        auc = roc_auc_score(y_true, pairs_distances_df['similarity'])
 
-        fpr, tpr, thresholds = roc_curve(y_true, pairs_distances_df["similarity"])
+        fpr, tpr, thresholds = roc_curve(y_true, pairs_distances_df['similarity'])
         optimal_idx = np.argmax(tpr - fpr)
         optimal_threshold = thresholds[optimal_idx]
 
-        y_pred = (pairs_distances_df["similarity"] > optimal_threshold).astype(int)
+        y_pred = (pairs_distances_df['similarity'] > optimal_threshold).astype(int)
         accuracy = accuracy_score(y_true, y_pred)
 
         return pd.DataFrame(
-            {"Accuracy": [round(accuracy, 5)],
-            "Optimal Threshold": [round(optimal_threshold,5)],
-            "AUC": [round(auc, 5)],
-            "Distance Metric": [self.distance_metric.__name__]
+            {'Accuracy': [round(accuracy, 5)],
+            'Optimal Threshold': [round(optimal_threshold,5)],
+            'AUC': [round(auc, 5)],
+            'Distance Metric': [self.distance_metric.__name__]
             })
+    
+    def plot(output_dir, performances, *optional):
+        for task_name, task_df in performances.groupby('Task Name'):
+            plt.figure(figsize=(12, 8))
+            sns.barplot(x='Model Name', y='Accuracy', hue='Model Name', data=task_df)
+            plt.title(f'Accuracy Comparison for Task: {task_name}')
+            plt.ylabel('Accuracy')
+            plt.xlabel('Model')
+            plt.ylim(0, 1)
+            plt.xticks(rotation=45)
+            plt.tight_layout()
+            plt.savefig(os.path.join(output_dir, f'{task_name}_accuracy comparison.png'))
+            plt.close()
 
 class CorrelationTask(BaseTask):
     """
@@ -41,11 +56,29 @@ class CorrelationTask(BaseTask):
         self.correlation_metric = correlation_metric
 
     def compute_task_performance(self, pairs_distances_df):
-        correlation = self.correlation_metric(pairs_distances_df["nn_computed_distance"], self.pairs_df['distance'])[0, 1]
-        return pd.DataFrame({"Correlation Score": [round(correlation, 5)],
-                             "Distance Metric": [self.distance_metric.__name__],
-                             "Correlation Metric":[self.correlation_metric.__name__]
+        correlation = self.correlation_metric(pairs_distances_df['nn_computed_distance'], self.pairs_df['distance'])[0, 1]
+        return pd.DataFrame({'Correlation Score': [round(correlation, 5)],
+                             'Distance Metric': [self.distance_metric.__name__],
+                             'Correlation Metric':[self.correlation_metric.__name__]
                              })
+    
+    def plot(output_dir, performances, distances, *optional):
+        for task_name, task_df in performances.groupby('Task Name'):
+            for model_name, task_model_df in task_df.groupby('Model Name'):
+
+                d_data = distances[model_name][task_name]
+
+                correlation_score = task_model_df['Correlation Score'].values[0]
+                plt.figure(figsize=(10, 8))
+                
+                sns.regplot(data=d_data, x='distance', y='nn_computed_distance', scatter=True, line_kws={'color': 'red'})                
+                plt.title(f'Correlation Scatter Plot for Task: {task_name} ({model_name})\nCorrelation Score: {correlation_score:.2f}')
+                plt.xlabel('Input File Distance')
+                plt.ylabel('NN Computed Distance')
+                plt.tight_layout()
+
+                plt.savefig(os.path.join(output_dir, f'{task_name}-{model_name}_correlation scatter.png'))
+                plt.close()
     
 class RelativeDifferenceTask(BaseTask):
     """
@@ -67,8 +100,20 @@ class RelativeDifferenceTask(BaseTask):
         
         relative_difference = (group1_mean - group2_mean) / (group1_mean + group2_mean)
         return pd.DataFrame({
-            "Group 1 Mean": [group1_mean],
-            "Group 2 Mean": [group2_mean],
-            "Relative Difference": [round(relative_difference, 5)],
-            "Distance Metric": [self.distance_metric.__name__]
+            'Group 1 Mean': [group1_mean],
+            'Group 2 Mean': [group2_mean],
+            'Relative Difference': [round(relative_difference, 5)],
+            'Distance Metric': [self.distance_metric.__name__]
             })
+    
+    def plot(output_dir, performances, *optional):
+        for task_name, task_df in performances.groupby('Task Name'):
+            plt.figure(figsize=(12, 8))
+            sns.barplot(x='Model Name', y='Relative Difference', hue='Model Name', data=task_df)
+            plt.title(f'Relative Difference Comparison for Task: {task_name}')
+            plt.ylabel('Relative Difference')
+            plt.xlabel('Model')
+            plt.xticks(rotation=45)
+            plt.tight_layout()
+            plt.savefig(os.path.join(output_dir, f'{task_name}_relative-diff comparison.png'))
+            plt.close()

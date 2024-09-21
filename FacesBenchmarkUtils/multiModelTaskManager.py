@@ -54,8 +54,8 @@ class MultiModelTaskManager():
         self.batch_size = batch_size
 
     def __repr__(self):
-        return (f"MultiModelTaskManager(models={list(self.models.keys())}, "
-                f"tasks={list(self.tasks.keys())}")
+        return (f'MultiModelTaskManager(models={list(self.models.keys())}, '
+                f'tasks={list(self.tasks.keys())}')
 
     def add_tasks(self, tasks):
         """
@@ -146,32 +146,35 @@ class MultiModelTaskManager():
 
     def export_task_tensors(self, model_name, task_name, path):
         if task_name not in self.tasks:
-            raise Exception("Task Not Found!")
-        torch.save(self.images_tensors[model_name], os.path.join(path, f"{date.today()}_{model_name}_{task_name}_tensors.pth"))
-        print(f"Saved {task_name} tensors for {model_name} dataframe.")
+            raise Exception('Task Not Found!')
+        torch.save(self.images_tensors[model_name], os.path.join(path, f'{date.today()}_{model_name}_{task_name}_tensors.pth'))
+        print(f'Saved {task_name} tensors for {model_name} dataframe.')
 
     def export_model_task_performance(self, task_name, path):
         if task_name not in self.tasks:
-            raise Exception("Task Not Found!")
-        self.tasks_performance_dfs[task_name].to_csv(os.path.join(path, f"{date.today()}_{task_name}_performance.csv"))
-        print(f"Saved {task_name} performance dataframe.")
+            raise Exception('Task Not Found!')
+        self.tasks_performance_dfs[task_name].to_csv(os.path.join(path, f'{date.today()}_{task_name}_performance.csv'))
+        print(f'Saved {task_name} performance dataframe.')
 
-    def export_model_results_by_task(self, path):
+    def export_model_results_by_task(self, export_path):
         res_by_task_type = self.group_tasks_by_type()
         for task_type, res in res_by_task_type.items():
-            res.to_csv(os.path.join(path, f"{date.today()}_all_{task_type}_results.csv"))
+            task_type_folder = os.path.join(export_path, task_type)
+            os.makedirs(task_type_folder, exist_ok=True)
+            res.to_csv(os.path.join(export_path, f'{date.today()}_all_{task_type}_results.csv'))
+            task_type.plot(task_type_folder, res, self.model_task_distances_dfs)
 
     def compute_tensors(self, model_name, task_name, print_log=False):
         if task_name not in self.tasks:
-            raise Exception("Task Not Found!")
+            raise Exception('Task Not Found!')
         if model_name not in self.models:
-            raise Exception("Model Not Found!")
+            raise Exception('Model Not Found!')
 
         selected_task = self.tasks[task_name]
         selected_model = self.models[model_name]
         self.__get_pairs_output(selected_model, selected_task.pairs_df, selected_task.images_path)
         if print_log:
-            print(f"Processed all images for {task_name}.")
+            print(f'Processed all images for {task_name}.')
 
     def run_task(self, model_name, task_name, export_path):
         # os.makedirs(os.path.join(export_path, f'results/{model_name}'), exist_ok=True)
@@ -188,8 +191,8 @@ class MultiModelTaskManager():
 
         # Compute task's metric
         task_performance = selected_task.compute_task_performance(result_df)
-        task_result = pd.concat([pd.Series([model_name], name="Model Name"), task_performance], axis=1)
-        task_result['Task'] = task_name 
+        task_result = pd.concat([pd.Series([model_name], name='Model Name'), task_performance], axis=1)
+        task_result['Task Name'] = task_name 
 
         # Update task performance dataframe
         if task_name not in self.tasks_performance_dfs:
@@ -204,89 +207,15 @@ class MultiModelTaskManager():
         for model_name in self.models:
             self.run_task(model_name, task_name, export_path)
         self.export_model_results_by_task(export_path)
-        self.plot_model_task_results(export_path)
 
     def run_all_tasks_with_model(self, model_name, export_path=os.getcwd()):
         for task_name in self.tasks:
             self.run_task(model_name, task_name, export_path)
-        print(f"Processed all tasks for {model_name}.")
-        # self.plot_model_task_results(model_name)
+        print(f'Processed all tasks for {model_name}.')
 
     def run_all_tasks_all_models(self, export_path=os.getcwd()):
         os.makedirs(export_path, exist_ok=True)
         for model_name in self.models:
             self.run_all_tasks_with_model(model_name)
-        print(f"Finished processing all the tasks for all the models.")
+        print(f'Finished processing all the tasks for all the models.')
         self.export_model_results_by_task(export_path)
-        self.plot_model_task_results(export_path)
-
-    def plot_model_task_results(self, output_dir=os.getcwd()):
-        os.makedirs(output_dir, exist_ok=True)
-
-        for _ in self.models:
-            self.plot_accuracy_tasks(output_dir)
-            self.plot_correlation_tasks(output_dir)
-            self.plot_relative_difference_tasks(output_dir)
-        print("Finished plotting results.")
-
-    def plot_accuracy_tasks(self, output_dir):
-        os.makedirs(output_dir, exist_ok=True)
-
-        for task_name, task_df in self.tasks_performance_dfs.items():
-            if not isinstance(self.tasks[task_name], AccuracyTask):
-                continue
-
-            plt.figure(figsize=(12, 8))
-            sns.barplot(x='Model Name', y='Accuracy', hue='Model Name', data=task_df)
-            plt.title(f'Accuracy Comparison for Task: {task_name}')
-            plt.ylabel('Accuracy')
-            plt.xlabel('Model')
-            plt.ylim(0, 1)
-            plt.xticks(rotation=45)
-            plt.tight_layout()
-            plt.savefig(os.path.join(output_dir, f'{task_name}_accuracy_comparison.png'))
-            plt.close()
-
-    def plot_correlation_tasks(self, output_dir):
-        """
-        Creates and saves scatter plots for correlation tasks. Each plot compares the distances
-        between `distance` and `nn_computed_distance` for a given task and model. Adds correlation score and line.
-        """
-        os.makedirs(output_dir, exist_ok=True)
-
-        for model_name, tasks in self.model_task_distances_dfs.items():
-            for task_name, df in tasks.items():
-                if not isinstance(self.tasks[task_name], CorrelationTask):
-                  continue
-                
-                results_df = self.tasks_performance_dfs.get(task_name)
-                model_row = results_df[results_df['Model Name'] == model_name]
-                correlation_score = model_row['Correlation Score'].values[0]
-                plt.figure(figsize=(10, 8))
-                
-                sns.regplot(data=df, x='distance', y='nn_computed_distance', scatter=True, line_kws={"color": "red"})                
-                plt.title(f'Correlation Scatter Plot for Task: {task_name} ({model_name})\nCorrelation Score: {correlation_score:.2f}')
-                plt.xlabel('Input File Distance')
-                plt.ylabel('NN Computed Distance')
-                plt.tight_layout()
-
-                # Save the scatter plot for the current task
-                plt.savefig(os.path.join(output_dir, f"{task_name}_correlation.png"))
-                plt.close()
-    
-    def plot_relative_difference_tasks(self, output_dir):
-        os.makedirs(output_dir, exist_ok=True)
-
-        for task_name, task_df in self.tasks_performance_dfs.items():
-            if not isinstance(self.tasks[task_name], RelativeDifferenceTask):
-                continue
-
-            plt.figure(figsize=(12, 8))
-            sns.barplot(x='Model Name', y='Relative Difference', hue='Model Name', data=task_df)
-            plt.title(f'Relative Difference Comparison for Task: {task_name}')
-            plt.ylabel('Relative Difference')
-            plt.xlabel('Model')
-            plt.xticks(rotation=45)
-            plt.tight_layout()
-            plt.savefig(os.path.join(output_dir, f'{task_name}_relative-diff_comparison.png'))
-            plt.close()

@@ -7,19 +7,19 @@ def main():
     torch.cuda.empty_cache()
     ## models ##
     
-    clip_model = CLIPModel("clip")
-    vit8 = DinoModel("dino-vitb8", "facebook/dino-vitb8")
-    vit16 = DinoModel("dino-vitb16", version = "facebook/dino-vitb16")
-    dinoV2 = DinoModel("dinov2-base", version = "facebook/dinov2-base")
-    vgg16_trained_fc7 = Vgg16Model(name="VGG16-trained-fc7",
-                                   weights_path="/home/new_storage/experiments/face_memory_task/models/face_trained_vgg16_119.pth",
+    clip_model = CLIPModel('clip')
+    vit8 = DinoModel('dino-vitb8', 'facebook/dino-vitb8')
+    vit16 = DinoModel('dino-vitb16', version = 'facebook/dino-vitb16')
+    dinoV2 = DinoModel('dinov2-base', version = 'facebook/dinov2-base')
+    vgg16_trained_fc7 = Vgg16Model(name='VGG16-trained-fc7',
+                                   weights_path='/home/new_storage/experiments/face_memory_task/models/face_trained_vgg16_119.pth',
                                    extract_layer='classifier.5')
-    vgg16_trained_avgpool = Vgg16Model(name="VGG16-trained-avgpool",
-                                   weights_path="/home/new_storage/experiments/face_memory_task/models/face_trained_vgg16_119.pth", 
+    vgg16_trained_avgpool = Vgg16Model(name='VGG16-trained-avgpool',
+                                   weights_path='/home/new_storage/experiments/face_memory_task/models/face_trained_vgg16_119.pth', 
                                    extract_layer='avgpool')
-    vgg16_untrained_fc7 = Vgg16Model(name="VGG16-untrained-fc7",
+    vgg16_untrained_fc7 = Vgg16Model(name='VGG16-untrained-fc7',
                                      extract_layer='classifier.5')
-    vgg16_untrained_avgpool = Vgg16Model(name="VGG16-untrained-avgpool",
+    vgg16_untrained_avgpool = Vgg16Model(name='VGG16-untrained-avgpool',
                                          extract_layer='avgpool')
 
     ## tasks ##
@@ -42,16 +42,16 @@ def main():
     upright_acc = AccuracyTask(
         pairs_file_path = upright_path,
         images_path = inversion_images_path,
-        true_label = "same",
+        true_label = 'same',
         distance_metric = pairwise.cosine_distances,
-        name = "Upright Accuracy"
+        name = 'Upright Accuracy'
         )
     inverted_acc = AccuracyTask(
         pairs_file_path = inverted_path,
         images_path = inversion_images_path,
-        true_label = "same",
+        true_label = 'same',
         distance_metric = pairwise.cosine_distances,
-        name = "Inverted Accuracy"
+        name = 'Inverted Accuracy'
         )
     
     sim_pairs_file_path = os.path.join(os.getcwd(), 'tests_datasets/similarity_perception/faces_visual_perception_similarity_behavioral_summary.csv')
@@ -62,21 +62,21 @@ def main():
     same_diff_task = CorrelationTask(
         pairs_file_path = sim_pairs_file_path,
         images_path = sim_images_path,
-        name = "Same Diff",
+        name = 'Same Diff',
         distance_metric = pairwise.cosine_distances,
         correlation_metric = np.corrcoef
         )
     same_diff_DP_task = CorrelationTask(
         pairs_file_path = sim_DP_pairs_file_path,
         images_path = sim_images_path,
-        name = "Same Diff DP",
+        name = 'Same Diff DP',
         distance_metric = pairwise.cosine_distances,
         correlation_metric = np.corrcoef
         )
     same_diff_SP_task = CorrelationTask(
         pairs_file_path = sim_SP_pairs_file_path,
         images_path = sim_images_path,
-        name = "Same Diff SP",
+        name = 'Same Diff SP',
         distance_metric = pairwise.cosine_distances,
         correlation_metric = np.corrcoef
         )
@@ -89,21 +89,21 @@ def main():
     same_diff_int_task = CorrelationTask(
         pairs_file_path = sim_international_pairs_file_path,
         images_path = sim_international_images_path,
-        name = "Same Diff: International Celebs",
+        name = 'Same Diff: International Celebs',
         distance_metric = pairwise.cosine_distances,
         correlation_metric = np.corrcoef
         )
     same_diff_DP_int_task = CorrelationTask(
         pairs_file_path = sim_international_DP_pairs_file_path,
         images_path = sim_international_images_path,
-        name = "Same Diff DP: International Celebs",
+        name = 'Same Diff DP: International Celebs',
         distance_metric = pairwise.cosine_distances,
         correlation_metric = np.corrcoef
         )
     same_diff_SP_int_task = CorrelationTask(
         pairs_file_path = sim_international_SP_pairs_file_path,
         images_path = sim_international_images_path,
-        name = "Same Diff SP: International Celebs",
+        name = 'Same Diff SP: International Celebs',
         distance_metric = pairwise.cosine_distances,
         correlation_metric = np.corrcoef
         )
@@ -115,14 +115,14 @@ def main():
     familiar_il_task = CorrelationTask(
         pairs_file_path = sim_il_familiar_pairs_file_path,
         images_path = sim_il_images_path,
-        name = "IL Celebs: Familiar Performance",
+        name = 'IL Celebs: Familiar Performance',
         distance_metric = pairwise.cosine_distances,
         correlation_metric = np.corrcoef 
     )
     unfamiliar_il_task = CorrelationTask(
         pairs_file_path = sim_il_unfamiliar_pairs_file_path,
         images_path = sim_il_images_path,
-        name = "IL Celebs: Unfamiliar Performance",
+        name = 'IL Celebs: Unfamiliar Performance',
         distance_metric = pairwise.cosine_distances,
         correlation_metric = np.corrcoef 
     )
@@ -134,16 +134,16 @@ def main():
     other_race_caucasian = AccuracyTask(
         pairs_file_path = caucasian_pairs_path,
         images_path = other_race_images_path,
-        true_label = "same",
+        true_label = 'same',
         distance_metric = pairwise.cosine_distances,
-        name = "Caucasian Accuracy"
+        name = 'Caucasian Accuracy'
         )
     other_race_asian = AccuracyTask(
         pairs_file_path = asian_pairs_path,
         images_path = other_race_images_path,
-        true_label = "same",
+        true_label = 'same',
         distance_metric = pairwise.cosine_distances,
-        name = "Asian Accuracy"
+        name = 'Asian Accuracy'
         )
     
     thatcher_inverted_pairs = os.path.join(os.getcwd(), 'tests_datasets/thatcher/human_ratings_thatcher_inverted.csv')
@@ -187,5 +187,5 @@ def main():
 
     multimodel_manager.run_all_tasks_all_models(export_path = os.path.join(os.getcwd(), f'results/{date.today()}'))
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
