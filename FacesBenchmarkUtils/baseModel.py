@@ -4,11 +4,11 @@ from torch import nn
 import torchvision.transforms as transforms
 
 class BaseModel(ABC):
-    def __init__(self, name: str, weights_path: str = None, extract_layer: str = None, preprocess_function = None):
+    def __init__(self, name: str, weights_path: str = None, extract_layers = None, preprocess_function = None):
         self.set_preprocess_function(preprocess_function)
-        self.hook_output = None
+        self.hook_outputs = {}
         self.name = name
-        self.extract_layer = extract_layer
+        self.extract_layers = extract_layers if isinstance(extract_layers, list) else ([extract_layers] if extract_layers else [])
         self.weights_path = weights_path
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.num_identities = self._set_num_identities() if weights_path else None
@@ -16,7 +16,8 @@ class BaseModel(ABC):
         if weights_path:
             self._load_model()
         self.to()
-        self._register_hook()
+        self.model.eval()
+        self._register_hooks()
 
     def _set_num_identities(self):
         checkpoint = torch.load(self.weights_path, map_location=self.device)
@@ -34,7 +35,7 @@ class BaseModel(ABC):
     def _load_model(self):
         checkpoint = torch.load(self.weights_path, map_location=self.device)
         state_dict = checkpoint.get('state_dict', checkpoint)
-        state_dict = {k.replace("module.", ""): v for k, v in state_dict.items()}
+        state_dict = {k.replace('module.', ''): v for k, v in state_dict.items()}
         self.model.load_state_dict(state_dict)
 
         if torch.cuda.device_count() > 1:
@@ -42,15 +43,26 @@ class BaseModel(ABC):
         self.to()
         self.model.eval()
 
-    def _register_hook(self):
-        if self.extract_layer is not None:
-            layer = self._get_layer(self.extract_layer)
-            if layer:
-                layer.register_forward_hook(self.hook_fn)
+    def print_layer_names(self, simplified=False):
+        layers = dict(self.model.named_modules())
+        for name, info in layers.items():
+            print(f'{name}\n{info}\n' if not simplified else name)
 
+    def _register_hooks(self):
+        if self.extract_layers:
+            for layer_name in self.extract_layers:
+                layer = self._get_layer(layer_name)
+                if layer:
+                    layer.register_forward_hook(self._get_hook_fn(layer_name))
+
+    def _get_hook_fn(self, layer_name):
+        def hook_fn(module, input, output):
+            self.hook_outputs[layer_name] = output
+        return hook_fn
+    
     def _get_layer(self, layer_name):
         """
-        Get the layer by name (e.g., 'features.30', 'classifier.3') or by index.
+        Get the layer by name (e.g., 'features.30', 'classifier.3').
         This will handle complex architectures like ResNet, VGG, etc.
         """
         if layer_name is None:
@@ -61,13 +73,24 @@ class BaseModel(ABC):
         else:
             raise ValueError(f"Layer {layer_name} not found in the model.")
 
-    def hook_fn(self, module, input, output):
-        self.hook_output = output
-
     @abstractmethod
-    def get_output(self, image_tensor):
+    def _forward(self, input_tensor):
         pass
 
+    def get_output(self, input_tensor):
+        self.hook_outputs = {}
+        input_tensor = input_tensor.to(self.device)
+        with torch.no_grad():
+            output = self._forward(input_tensor)
+            if self.hook_outputs:
+                outputs = {
+                    layer_name: out.detach().cpu().view(out.size(0), -1)
+                    for layer_name, out in self.hook_outputs.items()
+                }
+            else:
+                outputs = {'default': output.detach().cpu().view(output.size(0), -1)}
+            return outputs
+                
     def to(self):
         if self.model:
             self.model.to(self.device)

@@ -24,17 +24,26 @@ class BaseTask(ABC):
         self.distance_metric = self.__validate_distance_metric(distance_metric)
 
     def __to_float(self, x):
-        if np.isscalar(x):
+        if isinstance(x, torch.Tensor):
+            if x.numel() == 1:
+                return x.item()
+            else:
+                return x.mean().item()
+        elif isinstance(x, np.ndarray):
+            if x.size == 1:
+                return float(x.item())
+            else:
+                return float(x.mean())
+        elif np.isscalar(x):
             return float(x)
-        elif x.size == 1:
-            return float(x.item())
         else:
-            return float(x.ravel()[0])
+            return float(x)
+
 
     def __validate_distance_metric(self, user_func):
         try:
-            rand_t1 = torch.rand((2, 3))
-            rand_t2 = torch.rand((2, 3))
+            rand_t1 = torch.rand((10,2))
+            rand_t2 = torch.rand((10,2))
             result = user_func(rand_t1, rand_t2)
             self.__to_float(result)
         except Exception as e:

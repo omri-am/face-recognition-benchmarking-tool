@@ -21,16 +21,8 @@ class ImageDataset(Dataset):
     def __getitem__(self, idx):
         image_path = self.image_paths[idx]
         full_image_path = os.path.join(self.images_folder_path, image_path)
-        image_tensor = self.__open_image(self.model, full_image_path)
-        return image_tensor.squeeze(0), image_path
-
-    def __open_image(self, model, image_path):
-        if hasattr(model, 'preprocess_image'):
-            tensor = model.preprocess_image(image_path)
-        else:
-            image = Image.open(image_path).convert('RGB')
-            tensor = model.preprocess(image)
-        return tensor
+        image_tensor = self.model.preprocess_image(full_image_path)
+        return image_tensor, image_path
 
 class MultiModelTaskManager():
     """
@@ -89,39 +81,52 @@ class MultiModelTaskManager():
         with torch.no_grad():
             for image_tensors, image_names in dataloader:
                 image_tensors = image_tensors.to(model.device)
-                batch_outputs = []
+                batch_outputs = model.get_output(image_tensors)
 
-                for img_tensor in image_tensors:
-                    output = model.get_output(img_tensor)
-                    batch_outputs.append(output.cpu().numpy())  
+                for idx, img_name in enumerate(image_names):
+                    outputs = {layer_name: output[idx] for layer_name, output in batch_outputs.items()}
+                    self.images_tensors[model.name][img_name] = outputs
 
-                for img, output in zip(image_names, batch_outputs):
-                    self.images_tensors[model.name][img] = output
+                # Clear variables to free memory
+                del image_tensors, image_names, batch_outputs
+                torch.cuda.empty_cache()
         return self.images_tensors[model.name]
 
     def __compute_distances(self, model_name, distance_metric, df):
-        distances = []
-        pair_ids = []
+        records = []
+        sample_img_name = next(iter(self.images_tensors[model_name]))
+        layer_names = self.images_tensors[model_name][sample_img_name].keys()
 
         for _, row in df.iterrows():
             img1_name = row['img1']
             img2_name = row['img2']
             pair_id = row['pair_id']
 
-            tensor1 = self.images_tensors[model_name][img1_name]
-            tensor2 = self.images_tensors[model_name][img2_name]
-            
-            # Reshape tensors if necessary
-            if tensor1.ndim == 1:
-                tensor1 = tensor1.reshape(1, -1)
-            if tensor2.ndim == 1:
-                tensor2 = tensor2.reshape(1, -1)
+            for layer_name in layer_names:
+                tensor1 = self.images_tensors[model_name][img1_name][layer_name]
+                tensor2 = self.images_tensors[model_name][img2_name][layer_name]
+                
+                if tensor1.ndim == 1:
+                    tensor1 = tensor1.unsqueeze(0)
+                if tensor2.ndim == 1:
+                    tensor2 = tensor2.unsqueeze(0)
 
-            d = distance_metric(tensor1, tensor2)
-            distances.append(d)
-            pair_ids.append(pair_id)
+                d = distance_metric(tensor1, tensor2)
+                if isinstance(d, torch.Tensor):
+                    d = d.item()
 
-        return pd.DataFrame({'pair_id': pair_ids, 'nn_computed_distance': distances})
+                record = {
+                    'pair_id': pair_id,
+                    'img1': img1_name,
+                    'img2': img2_name,
+                    'Layer Name': layer_name,
+                    'nn_computed_distance': d
+                }
+                records.append(record)
+
+        distances_df = pd.DataFrame.from_records(records)
+        return distances_df
+
 
     def group_tasks_by_type(self):
         task_type_groups = defaultdict(list)
@@ -147,8 +152,12 @@ class MultiModelTaskManager():
     def export_task_tensors(self, model_name, task_name, path):
         if task_name not in self.tasks:
             raise Exception('Task Not Found!')
-        torch.save(self.images_tensors[model_name], os.path.join(path, f'{date.today()}_{model_name}_{task_name}_tensors.pth'))
-        print(f'Saved {task_name} tensors for {model_name} dataframe.')
+        
+        model_tensors = self.images_tensors[model_name]
+        for layer_name, layer_outputs in model_tensors.items():
+            save_path = os.path.join(path, f'{date.today()}_{model_name}_{task_name}_{layer_name}_tensors.pth')
+            torch.save(layer_outputs, save_path)
+            print(f'Saved {task_name} tensors for {model_name}, layer {layer_name}.')
 
     def export_model_task_performance(self, task_name, path):
         if task_name not in self.tasks:
@@ -180,29 +189,35 @@ class MultiModelTaskManager():
             print(f'Processed all images for {task_name}.')
 
     def run_task(self, model_name, task_name, export_path):
-        # os.makedirs(os.path.join(export_path, f'results/{model_name}'), exist_ok=True)
         self.compute_tensors(model_name, task_name)
         selected_task = self.tasks[task_name]
 
-        # Compute distances
         pairs_df = selected_task.pairs_df
         pairs_df = pairs_df.assign(pair_id=pairs_df.index)
         distances_df = self.__compute_distances(model_name, selected_task.distance_metric, pairs_df)
-        result_df = pairs_df.merge(distances_df, on='pair_id', how='left')
+        inputs_result_merge = pairs_df.merge(distances_df, on='pair_id', how='left')
 
-        self.model_task_distances_dfs[model_name][task_name] = result_df
+        self.model_task_distances_dfs[model_name][task_name] = inputs_result_merge
 
-        # Compute task's metric
-        task_performance = selected_task.compute_task_performance(result_df)
-        task_result = pd.concat([pd.Series([model_name], name='Model Name'), task_performance], axis=1)
-        task_result['Task Name'] = task_name 
+        task_performance_list = []
 
-        # Update task performance dataframe
+        for layer_name, group_df in inputs_result_merge.groupby('Layer Name'):
+            task_performance = selected_task.compute_task_performance(group_df)
+            task_result = pd.DataFrame({
+                'Model Name': [model_name],
+                'Task Name': [task_name],
+                'Layer Name': [layer_name],
+                **task_performance.to_dict(orient='list')
+            })
+            task_performance_list.append(task_result)
+
+        task_performance_df = pd.concat(task_performance_list, ignore_index=True)
+
         if task_name not in self.tasks_performance_dfs:
-            self.tasks_performance_dfs[task_name] = task_result
+            self.tasks_performance_dfs[task_name] = task_performance_df
         else:
             self.tasks_performance_dfs[task_name] = pd.concat(
-                [self.tasks_performance_dfs[task_name], task_result], 
+                [self.tasks_performance_dfs[task_name], task_performance_df],
                 ignore_index=True
             )
 

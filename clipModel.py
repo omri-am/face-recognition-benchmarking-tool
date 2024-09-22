@@ -15,20 +15,21 @@ install_clip()
 import clip
 
 class CLIPModel(BaseModel):
-    def __init__(self, name: str, version="ViT-B/32"):
+    def __init__(self, name, version="ViT-B/32", extract_layers=None):
         self.version = version
-        super().__init__(name=name, extract_layer=None)
+        super().__init__(name=name, extract_layers=extract_layers)
 
     def _build_model(self):
         self.model, self.preprocess = clip.load(self.version, device=self.device)
+        self.model = self.model.visual
         self.model.eval()
+        self.model.float()
 
-    def get_output(self, image_tensor):
-        image_tensor = image_tensor.unsqueeze(0)
-        with torch.no_grad():
-            image_features = self.model.encode_image(image_tensor.to(self.device))
-        return image_features
+    def _forward(self, input_tensor):
+        if input_tensor.ndim == 3:
+            input_tensor = input_tensor.unsqueeze(0)
+        return self.model(input_tensor)
 
     def preprocess_image(self, image_path):
         image = Image.open(image_path).convert('RGB')
-        return self.preprocess(image).unsqueeze(0)
+        return self.preprocess(image)

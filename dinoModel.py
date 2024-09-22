@@ -18,9 +18,9 @@ pipinstall(tqdm_command)
 from transformers import AutoModel, AutoImageProcessor
 
 class DinoModel(BaseModel):
-    def __init__(self, name: str, version='facebook/dinov2-base'):
+    def __init__(self, name: str, version='facebook/dinov2-base', extract_layers=None):
         self.version = version
-        super().__init__(name=name, extract_layer=None)
+        super().__init__(name=name, extract_layers=extract_layers)
 
     def _build_model(self):
         self.model = AutoModel.from_pretrained(self.version)
@@ -28,14 +28,14 @@ class DinoModel(BaseModel):
         self.model.to(self.device)
         self.model.eval()
 
+    def _forward(self, input_tensor):
+        if input_tensor.ndim == 3:
+            input_tensor = input_tensor.unsqueeze(0)
+        output = self.model(pixel_values=input_tensor)
+        # Return the last_hidden_state as default output
+        return output.last_hidden_state
+
     def preprocess_image(self, image_path):
         image = Image.open(image_path).convert('RGB')
         inputs = self.processor(images=image, return_tensors="pt")
-        return inputs['pixel_values'].unsqueeze(0)
-
-    def get_output(self, input_tensor):
-        input_tensor = input_tensor.to(self.device)
-        with torch.no_grad():
-            output = self.model(pixel_values=input_tensor)
-        flattened_output = output.last_hidden_state.view(output.last_hidden_state.size(0), -1)
-        return flattened_output
+        return inputs['pixel_values'][0]
