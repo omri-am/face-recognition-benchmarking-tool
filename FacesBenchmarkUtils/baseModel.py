@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 import torch
 from torch import nn
 import torchvision.transforms as transforms
+from PIL import Image
 
 class BaseModel(ABC):
     def __init__(self, name: str, weights_path: str = None, extract_layers = None, preprocess_function = None):

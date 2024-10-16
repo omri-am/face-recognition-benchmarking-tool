@@ -34,11 +34,16 @@ def main():
     vgg16_trained = Vgg16Model(name='VGG16-trained',
                                weights_path='/home/new_storage/experiments/face_memory_task/models/face_trained_vgg16_119.pth',
                                extract_layers=['avgpool', 'classifier.5'])
-    vgg16_untrained = Vgg16Model(name='VGG16-untrained-fc7',
+    vgg16_trained_all = Vgg16Model(name='VGG16-trained',
+                               weights_path='/home/new_storage/experiments/face_memory_task/models/face_trained_vgg16_119.pth',
+                               extract_layers=all_vgg16_layers)
+    vgg16_untrained = Vgg16Model(name='VGG16-untrained',
                                  extract_layers=['avgpool', 'classifier.5'])
+    vgg16_untrained_all = Vgg16Model(name='VGG16-untrained',
+                                 extract_layers=all_vgg16_layers)
     clip_model = CLIPModel('clip')
-    vit8 = DinoModel('dino-vitb8', 'facebook/dino-vitb8')
-    vit16 = DinoModel('dino-vitb16', version = 'facebook/dino-vitb16')
+    # vit8 = DinoModel('dino-vitb8', 'facebook/dino-vitb8')
+    # vit16 = DinoModel('dino-vitb16', version = 'facebook/dino-vitb16')
     dinoV2 = DinoModel('dinov2-base', version = 'facebook/dinov2-base')
 
     ## tasks ##
@@ -167,12 +172,14 @@ def main():
 
     multimodel_manager = MultiModelTaskManager(
         models = [
-            vgg16_trained, 
-            vgg16_untrained,
+            vgg16_trained_all,
+            # vgg16_trained,
+            vgg16_untrained_all, 
+            # vgg16_untrained,
             clip_model, 
             dinoV2, 
-            vit8, 
-            vit16
+            # vit8, 
+            # vit16
             ],
         tasks = [
             lfw_acc,
@@ -189,7 +196,7 @@ def main():
             thatcher_task
             ])
 
-    multimodel_manager.run_all_tasks_all_models(export_path = os.path.join(os.getcwd(), f'results/{date.today()}'))
+    multimodel_manager.run_all_tasks_all_models(export_path = os.path.join(os.getcwd(), f'results/{date.today()}/0218'), print_log=True)
 
 if __name__ == '__main__':
     main()
