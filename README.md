@@ -264,10 +264,6 @@ Contributions are welcome! Please open an issue or submit a pull request with yo
 4. Test your changes thoroughly.
 5. Submit a pull request.
 
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
 # Acknowledgements
 
 - **PyTorch**: An open-source machine learning framework.
@@ -279,5 +275,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 # Contact
 
 For questions or support, please open an issue or contact:
+
 Omri Amit, [omriamit@mail.tau.ac.il](mailto:omriamit@mail.tau.ac.il)
+
 Mia Shlein, [miachaias@mail.tau.ac.il](mailto:miachaias@mail.tau.ac.il)
