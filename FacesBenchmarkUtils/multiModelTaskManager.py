@@ -339,7 +339,6 @@ class MultiModelTaskManager:
         selected_model = self.models[model_name]
         pairs_df = selected_task.pairs_df.copy()
         pairs_df.insert(0, 'pair_id', pairs_df.index)
-        pairs_df.set_index('pair_id', inplace=True)
 
         images_folder_path = selected_task.images_path
 
@@ -349,10 +348,9 @@ class MultiModelTaskManager:
                 print(f'No data to process for task "{task_name}" with model "{model_name}".')
             return
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
-
         distances_df = self._process_batches(dataloader, selected_model, selected_task)
 
-        pairs_distances_df = pairs_df.join(distances_df, how='left')
+        pairs_distances_df = pairs_df.merge(distances_df, how='left', on='pair_id')
         pairs_distances_df = pairs_distances_df.rename(columns={'img1_x': 'img1', 'img2_x': 'img2'})
         pairs_distances_df = pairs_distances_df.drop(columns=['img1_y', 'img2_y'])
 
@@ -409,11 +407,9 @@ class MultiModelTaskManager:
                 )
                 records.extend(batch_records)
 
-                # Clear variables to free memory
                 del img1_tensors, img2_tensors, batch_outputs1, batch_outputs2
                 torch.cuda.empty_cache()
         distances_df = pd.DataFrame.from_records(records)
-        distances_df.set_index('pair_id', inplace=True)
         return distances_df
 
     def _compute_distances_for_batch(

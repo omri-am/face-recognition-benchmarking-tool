@@ -1,4 +1,4 @@
-# Benchmarking Framework for Neural Network Models
+# Face Effects Benchmarking Framework for Neural Network Models
 
 This repository provides a benchmarking framework for machine learning researchers to evaluate and compare the performance of neural network models on various tasks, specifically focusing on face recognition and related tasks. The framework allows you to:
 

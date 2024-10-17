@@ -49,7 +49,7 @@ def main():
     
     vgg16_trained = Vgg16Model(name='VGG16-trained',
                                weights_path='/home/new_storage/experiments/face_memory_task/models/face_trained_vgg16_119.pth',
-                               extract_layers=['features.0', 'features.2', 'features.10', 'avgpool', 'classifier.5'])
+                               extract_layers=['avgpool', 'classifier.5'])
     vgg16_trained_all = Vgg16Model(name='VGG16-trained',
                                weights_path='/home/new_storage/experiments/face_memory_task/models/face_trained_vgg16_119.pth',
                                extract_layers=all_vgg16_layers)
@@ -188,9 +188,9 @@ def main():
 
     multimodel_manager = MultiModelTaskManager(
         models = [
-            vgg16_trained_all,
-            # vgg16_trained,
-            vgg16_untrained_all, 
+            # vgg16_trained_all,
+            vgg16_trained,
+            # vgg16_untrained_all, 
             # vgg16_untrained,
             clip_model, 
             dinoV2, 
@@ -198,21 +198,21 @@ def main():
             # vit16
             ],
         tasks = [
-            lfw_acc,
-            upright_acc, 
-            inverted_acc, 
+            # lfw_acc,
+            # upright_acc, 
+            # inverted_acc, 
             same_diff_visual_int_task,
             same_diff_memory_int_task,
-            same_diff_DP_int_task,
-            same_diff_SP_int_task,
-            familiar_il_task,
-            unfamiliar_il_task,
-            other_race_caucasian, 
-            other_race_asian,
-            thatcher_task
+            # same_diff_DP_int_task,
+            # same_diff_SP_int_task,
+            # familiar_il_task,
+            # unfamiliar_il_task,
+            # other_race_caucasian, 
+            # other_race_asian,
+            # thatcher_task
             ])
 
-    multimodel_manager.run_all_tasks_all_models(export_path = os.path.join(os.getcwd(), f'results/{date.today()}/1817'), print_log=True)
+    multimodel_manager.run_all_tasks_all_models(export_path = os.path.join(os.getcwd(), f'results/{date.today()}/2205'), print_log=True)
 
 if __name__ == '__main__':
     main()
