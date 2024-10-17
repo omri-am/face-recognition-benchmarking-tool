@@ -8,37 +8,53 @@ def main():
     ## models ##
 
     all_vgg16_layers = ['features.0',
+                        'features.1',
                         'features.2',
+                        'features.3',
                         'features.4',
                         'features.5',
+                        'features.6',
                         'features.7',
+                        'features.8',
                         'features.9',
                         'features.10',
+                        'features.11',
                         'features.12',
+                        'features.13',
                         'features.14',
+                        'features.15',
                         'features.16',
                         'features.17',
+                        'features.18',
                         'features.19',
+                        'features.20',
                         'features.21',
+                        'features.22',
                         'features.23',
                         'features.24',
+                        'features.25',
                         'features.26',
+                        'features.27',
                         'features.28',
+                        'features.29',
                         'features.30',
                         'avgpool',
+                        'classifier.0',
+                        'classifier.1',
                         'classifier.2',
                         'classifier.3',
+                        'classifier.4',
                         'classifier.5',
                         'classifier.6']
     
     vgg16_trained = Vgg16Model(name='VGG16-trained',
                                weights_path='/home/new_storage/experiments/face_memory_task/models/face_trained_vgg16_119.pth',
-                               extract_layers=['avgpool', 'classifier.5'])
+                               extract_layers=['features.0', 'features.2', 'features.10', 'avgpool', 'classifier.5'])
     vgg16_trained_all = Vgg16Model(name='VGG16-trained',
                                weights_path='/home/new_storage/experiments/face_memory_task/models/face_trained_vgg16_119.pth',
                                extract_layers=all_vgg16_layers)
-    vgg16_untrained = Vgg16Model(name='VGG16-untrained',
-                                 extract_layers=['avgpool', 'classifier.5'])
+    # vgg16_untrained = Vgg16Model(name='VGG16-untrained',
+    #                              extract_layers=['avgpool', 'classifier.5'])
     vgg16_untrained_all = Vgg16Model(name='VGG16-untrained',
                                  extract_layers=all_vgg16_layers)
     clip_model = CLIPModel('clip')
@@ -196,7 +212,7 @@ def main():
             thatcher_task
             ])
 
-    multimodel_manager.run_all_tasks_all_models(export_path = os.path.join(os.getcwd(), f'results/{date.today()}/0218'), print_log=True)
+    multimodel_manager.run_all_tasks_all_models(export_path = os.path.join(os.getcwd(), f'results/{date.today()}/1817'), print_log=True)
 
 if __name__ == '__main__':
     main()

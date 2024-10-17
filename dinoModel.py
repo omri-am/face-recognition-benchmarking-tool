@@ -18,9 +18,9 @@ pipinstall(tqdm_command)
 from transformers import AutoImageProcessor, Dinov2Model
 
 class DinoModel(BaseModel):
-    def __init__(self, name: str, version='facebook/dinov2-base', extract_layers=None):
+    def __init__(self, name: str, version='facebook/dinov2-base'):
         self.version = version
-        super().__init__(name=name, extract_layers=extract_layers)
+        super().__init__(name=name)
 
     def _build_model(self):
         self.model = Dinov2Model.from_pretrained(self.version)

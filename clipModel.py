@@ -15,9 +15,9 @@ install_clip()
 import clip
 
 class CLIPModel(BaseModel):
-    def __init__(self, name, version="ViT-B/32", extract_layers=None):
+    def __init__(self, name, version="ViT-B/32"):
         self.version = version
-        super().__init__(name=name, extract_layers=extract_layers)
+        super().__init__(name=name)
 
     def _build_model(self):
         self.model, self.preprocess = clip.load(self.version, device=self.device)
