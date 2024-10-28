@@ -69,7 +69,7 @@ class AccuracyTask(BaseTask):
         pandas.DataFrame
             DataFrame containing the accuracy, optimal threshold, AUC, and distance metric name.
         """
-        pairs_distances_df['similarity'] = 1 - pairs_distances_df['nn_computed_distance']
+        pairs_distances_df['similarity'] = 1 - pairs_distances_df['model_computed_distance']
         y_true = self.pairs_df[self.true_label].values
         y_scores = pairs_distances_df['similarity'].values
 
@@ -191,7 +191,7 @@ class CorrelationTask(BaseTask):
         pandas.DataFrame
             DataFrame containing the correlation score, distance metric name, and correlation metric name.
         """
-        computed_distances = pairs_distances_df['nn_computed_distance'].values
+        computed_distances = pairs_distances_df['model_computed_distance'].values
         true_distances = self.pairs_df['distance'].values
 
         correlation_result = self.correlation_metric(computed_distances, true_distances)
@@ -325,8 +325,8 @@ class RelativeDifferenceTask(BaseTask):
         group1 = pairs_distances_df[pairs_distances_df[self.group_column] == unique_groups[0]]
         group2 = pairs_distances_df[pairs_distances_df[self.group_column] == unique_groups[1]]
 
-        group1_mean = group1['nn_computed_distance'].mean()
-        group2_mean = group2['nn_computed_distance'].mean()
+        group1_mean = group1['model_computed_distance'].mean()
+        group2_mean = group2['model_computed_distance'].mean()
 
         relative_difference = (group1_mean - group2_mean) / (group1_mean + group2_mean)
 
@@ -375,8 +375,8 @@ class ConditionedAverageDistances(BaseTask):
         pairs_file_path: str,
         images_path: str,
         distance_metric: Callable[[Any, Any], float],
-        condition_column: str,
-        normalize: bool= False
+        condition_column: str = 'condition',
+        normalize: bool = True
     ) -> None:
         """
         Initializes the ConditionedAverageDistances instance.
@@ -386,13 +386,15 @@ class ConditionedAverageDistances(BaseTask):
         name : str
             The name of the task.
         pairs_file_path : str
-            Path to the CSV file containing image pairs and group labels.
+            Path to the CSV file containing image pairs and condition labels.
         images_path : str
             Path to the directory containing images.
         distance_metric : callable
             Function to compute the distance between image embeddings.
-        group_column : str
-            Column name in the pairs file distinguishing between the two groups.
+        condition_column : str
+            Column name in the pairs file distinguishing between the different conditions. Default is 'condition'.
+        normialize: bool
+            Boolean parameter for normializing the computed distances, by deviding each distance with the max distance computed. Default is True.
         """
         super().__init__(
             name=name,
@@ -401,8 +403,8 @@ class ConditionedAverageDistances(BaseTask):
             distance_metric=distance_metric
         )
         self.distance_metric_name: str = distance_metric.__name__
-        self.condition_column: str = condition_column
         self.normalize: bool = normalize
+        self.pairs_df.rename(columns = {condition_column:'condition'}, inplace=True)
 
     def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -419,28 +421,24 @@ class ConditionedAverageDistances(BaseTask):
             DataFrame containing the group means, relative difference, and distance metric name.
         """
         if self.normalize:
-            max_distance = pairs_distances_df['nn_computed_distance'].max()
+            max_distance = pairs_distances_df['model_computed_distance'].max()
             if max_distance != 0:
-                pairs_distances_df['normalized_distance'] = pairs_distances_df['nn_computed_distance'] / max_distance
+                pairs_distances_df['normalized_distance'] = pairs_distances_df['model_computed_distance'] / max_distance
         else:
-            pairs_distances_df['normalized_distance'] = pairs_distances_df['nn_computed_distance']
+            pairs_distances_df['normalized_distance'] = pairs_distances_df['model_computed_distance']
+
+        avg_distances = pairs_distances_df.groupby(['condition'])['normalized_distance'].mean().reset_index()
+        
+        avg_distances.rename(columns={'normalized_distance': 'Mean Value', 'condition': 'Condition'}, inplace=True)
+        
+        avg_distances['Distance Metric'] = self.distance_metric_name
+
+        return avg_distances
     
-        avg_distances = pairs_distances_df.groupby(self.condition_column)['normalized_distance'].mean()
-        
-        result_dict = {}
-        for condition, mean_distance in avg_distances.items():
-            result_dict[f'Group {condition} Mean'] = [mean_distance]
-        
-        result_dict['Distance Metric'] = [self.distance_metric_name]
-        
-        result_df = pd.DataFrame(result_dict)
-        
-        return result_df
-    
+    @staticmethod
     def plot(
         output_dir: str,
         performances: pd.DataFrame,
-        condition_column: str,
         *optional: Any
     ) -> None:
         """
@@ -459,12 +457,12 @@ class ConditionedAverageDistances(BaseTask):
         -------
         None
         """
-        for condition, condition_df in performances.groupby(condition_column):
+        for condition, condition_df in performances.groupby('Condition'):
             PlotHelper.bar_plot(
                 performances=condition_df,
-                y=f'Group {condition} Mean',
+                y=f'Mean Value',
                 ylabel='Average Distance',
-                title_prefix=f'Average Distance Comparison- {condition}',
+                title_prefix=f'Average Distance Comparison - {condition}',
                 output_dir=output_dir,
-                file_name=f'average_distance_comparison_{condition}'
+                file_name=f'average_distance_comparison: {condition}'
             )

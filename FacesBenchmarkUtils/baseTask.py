@@ -107,11 +107,11 @@ class PlotHelper:
             rows = math.ceil(num_plots / cols)
 
             min_y = min(
-                distances[model_name][task_name]['nn_computed_distance'].min()
+                distances[model_name][task_name]['model_computed_distance'].min()
                 for model_name in task_df['Model Name'].unique()
             )
             max_y = max(
-                distances[model_name][task_name]['nn_computed_distance'].max()
+                distances[model_name][task_name]['model_computed_distance'].max()
                 for model_name in task_df['Model Name'].unique()
             )
 
@@ -131,7 +131,7 @@ class PlotHelper:
                 sns.regplot(
                     data=d_data_layer,
                     x='distance',
-                    y='nn_computed_distance',
+                    y='model_computed_distance',
                     scatter=True,
                     line_kws={'color': 'red'},
                     ax=ax
@@ -344,5 +344,15 @@ class BaseTask(ABC):
         ------
         NotImplementedError
             Must be implemented in subclasses.
+        """
+        pass
+
+    @abstractmethod
+    def plot(self,
+        output_dir: str,
+        performances: pd.DataFrame,
+        *optional: Any):
+        """
+        --- domunetation here ---
         """
         pass

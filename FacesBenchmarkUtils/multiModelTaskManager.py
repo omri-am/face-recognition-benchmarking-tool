@@ -4,6 +4,7 @@ from collections import defaultdict
 from typing import Any, Dict, List, Tuple, Union
 from .baseModel import BaseModel
 
+import hashlib
 import torch
 from torch.utils.data import Dataset, DataLoader
 import pandas as pd
@@ -238,7 +239,7 @@ class MultiModelTaskManager:
             os.makedirs(model_folder, exist_ok=True)
 
             for task_name, model_task_res in model_res.items():
-                for layer_name, group_df in model_task_res.groupby('Layer Name'):
+                for layer_name, group_df in model_task_res.groupby('layer_name'):
                     layer_folder = (
                         os.path.join(model_folder)
                         if layer_name == 'default'
@@ -287,7 +288,7 @@ class MultiModelTaskManager:
             os.path.join(export_path, f'{date.today()}_all_performance_df.csv'), index=False
         )
 
-        id_columns = ['Model Name', 'Layer Name', 'Task Name']
+        id_columns = ['Model Name', 'Layer Name', 'Task Name', 'Condition']
         functions_columns = ['Distance Metric', 'Correlation Metric']
         metric_columns = [
             col for col in all_performance_df.columns if col not in id_columns + functions_columns
@@ -338,7 +339,8 @@ class MultiModelTaskManager:
         selected_task = self.tasks[task_name]
         selected_model = self.models[model_name]
         pairs_df = selected_task.pairs_df.copy()
-        pairs_df.insert(0, 'pair_id', pairs_df.index)
+        pairs_df['pair_id'] = pairs_df.apply(self._compute_pair_id, axis=1)
+        pairs_df.insert(0, 'pair_id', pairs_df.pop('pair_id'))
 
         images_folder_path = selected_task.images_path
 
@@ -364,10 +366,16 @@ class MultiModelTaskManager:
         self._update_tasks_performance(task_name, task_performance_df)
 
         self.export_computed_metrics(export_path)
-        self.export_unified_summary(export_path)
+        # self.export_unified_summary(export_path)
 
         if print_log:
             print(f'Processed task "{task_name}" for model "{model_name}".')
+
+    def _compute_pair_id(self, row):
+        img_names = sorted([row['img1'], row['img2']])
+        concatenated_names = '_'.join(img_names)
+        pair_hash = hashlib.sha256(concatenated_names.encode()).hexdigest()
+        return pair_hash
 
     def _process_batches(
         self,
@@ -469,8 +477,8 @@ class MultiModelTaskManager:
                     'pair_id': pair_id,
                     'img1': img1_name,
                     'img2': img2_name,
-                    'Layer Name': layer_name,
-                    'nn_computed_distance': d
+                    'layer_name': layer_name,
+                    'model_computed_distance': d
                 }
                 records.append(record)
         return records
@@ -502,15 +510,19 @@ class MultiModelTaskManager:
             DataFrame containing performance metrics.
         """
         task_performance_list = []
-        for layer_name, group_df in pairs_distances_df.groupby('Layer Name'):
+        for layer_name, group_df in pairs_distances_df.groupby('layer_name'):
             task_performance = task.compute_task_performance(group_df)
-            task_result = pd.DataFrame({
-                'Task Name': [task_name],
-                'Model Name': [model_name],
-                'Layer Name': [layer_name],
-                **task_performance.to_dict(orient='list')
-            })
-            task_performance_list.append(task_result)
+
+            for _, row in task_performance.iterrows():
+                result_data = {
+                    'Task Name': task_name,
+                    'Model Name': model_name,
+                    'Layer Name': layer_name,
+                }
+                result_data.update(row.to_dict())
+                task_result = pd.DataFrame([result_data])
+                task_performance_list.append(task_result)
+
         task_performance_df = pd.concat(task_performance_list, ignore_index=True)
         return task_performance_df
 

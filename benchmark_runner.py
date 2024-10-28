@@ -178,7 +178,28 @@ def main():
         group_column = 'cond',
         distance_metric = torch.cdist,
         name = 'Thatcher Effect'
-    )
+        )
+    
+    Conditioned_pairs = os.path.join(os.getcwd(), 'tests_datasets/critical_features/critical_features_all_conditions.csv')
+    Conditioned_images_path = os.path.join(os.getcwd(), 'tests_datasets/critical_features/img_dataset/joined')
+
+    Conditioned_avg_dist_task = ConditionedAverageDistances(
+        pairs_file_path = Conditioned_pairs,
+        images_path = Conditioned_images_path,
+        condition_column = 'cond',
+        distance_metric = pairwise.cosine_distances,
+        normalize = False,
+        name = 'critical features'
+        )
+
+    Conditioned_avg_dist_task_normsalized = ConditionedAverageDistances(
+        pairs_file_path = Conditioned_pairs,
+        images_path = Conditioned_images_path,
+        condition_column = 'cond',
+        distance_metric = pairwise.cosine_distances,
+        normalize = True,
+        name = 'critical features normalized'
+        )
 
     ## multi model manager ##
 
@@ -188,31 +209,33 @@ def main():
 
     multimodel_manager = MultiModelTaskManager(
         models = [
-            vgg16_trained_all,
-            # vgg16_trained,
-            vgg16_untrained_all, 
-            # vgg16_untrained,
+            #vgg16_trained_all,
+            vgg16_trained,
+            #vgg16_untrained_all, 
+            #vgg16_untrained,
             clip_model, 
             dinoV2, 
             # vit8, 
             # vit16
             ],
         tasks = [
-            lfw_acc,
-            upright_acc, 
-            inverted_acc, 
-            same_diff_visual_int_task,
-            same_diff_memory_int_task,
-            same_diff_DP_int_task,
-            same_diff_SP_int_task,
-            familiar_il_task,
-            unfamiliar_il_task,
-            other_race_caucasian, 
-            other_race_asian,
-            thatcher_task
+            #lfw_acc,
+            # upright_acc, 
+            #inverted_acc, 
+            # same_diff_visual_int_task,
+            #same_diff_memory_int_task,
+            #same_diff_DP_int_task,
+            #same_diff_SP_int_task,
+            #familiar_il_task,
+            #unfamiliar_il_task,
+            #other_race_caucasian, 
+            #other_race_asian,
+            #thatcher_task,
+            Conditioned_avg_dist_task,
+            Conditioned_avg_dist_task_normsalized
             ])
 
-    multimodel_manager.run_all_tasks_all_models(export_path = os.path.join(os.getcwd(), f'results/{date.today()}/2205'), print_log=True)
+    multimodel_manager.run_all_tasks_all_models(export_path = os.path.join(os.getcwd(), f'results/{date.today()}/2119'), print_log=True)
 
 if __name__ == '__main__':
     main()

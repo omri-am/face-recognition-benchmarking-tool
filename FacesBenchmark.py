@@ -227,7 +227,7 @@ class AccuracyTask(BaseTask):
         self.true_label = true_label
 
     def compute_task_performance(self, pairs_df_with_calc):
-        similarity = pairs_df_with_calc['nn_computed_distance'].apply(lambda x: 1-float(x))
+        similarity = pairs_df_with_calc['model_computed_distance'].apply(lambda x: 1-float(x))
 
         y_true = pairs_df_with_calc[self.true_label]
         auc = roc_auc_score(y_true, similarity)
@@ -366,7 +366,7 @@ class MultiModelTaskManager():
         # Compute distances
         pairs_df = selected_task.pairs_df
         distances = self.__compute_distances(model_name, selected_task.distance_metric, pairs_df)
-        self.model_task_distances_dfs[model_name][task_name] = pairs_df.assign(nn_computed_distance=distances)
+        self.model_task_distances_dfs[model_name][task_name] = pairs_df.assign(model_computed_distance=distances)
 
         # Compute task's metric
         task_performance = selected_task.compute_task_performance(distances)
