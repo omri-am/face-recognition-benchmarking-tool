@@ -4,7 +4,6 @@ from collections import defaultdict
 from typing import Any, Dict, List, Tuple, Union
 from .baseModel import BaseModel
 
-import hashlib
 import torch
 from torch.utils.data import Dataset, DataLoader
 import pandas as pd
@@ -81,17 +80,15 @@ class PairDataset(Dataset):
                 - img2_tensor (torch.Tensor): Preprocessed tensor of the second image.
                 - img1_name (str): Filename of the first image.
                 - img2_name (str): Filename of the second image.
-                - pair_id (int): Unique identifier of the image pair.
         """
         row = self.pairs_df.iloc[idx]
-        pair_id = row['pair_id']
         img1_name = row['img1']
         img2_name = row['img2']
         img1_path = os.path.join(self.images_folder_path, img1_name)
         img2_path = os.path.join(self.images_folder_path, img2_name)
         img1_tensor = self.model.preprocess_image(img1_path)
         img2_tensor = self.model.preprocess_image(img2_path)
-        return img1_tensor, img2_tensor, img1_name, img2_name, pair_id
+        return img1_tensor, img2_tensor, img1_name, img2_name
 
 class MultiModelTaskManager:
     """
@@ -284,25 +281,39 @@ class MultiModelTaskManager:
             performance_dfs.append(task_performance_df)
 
         all_performance_df = pd.concat(performance_dfs, ignore_index=True)
-        all_performance_df.to_csv(
-            os.path.join(export_path, f'{date.today()}_all_performance_df.csv'), index=False
+        output_path = os.path.join(export_path, f'{date.today()}all performance.csv')
+        all_performance_df.to_csv(export_path, output_path)
+
+        non_metric_columns = all_performance_df.select_dtypes(exclude=[np.number]).columns.tolist()
+    
+        essential_columns = ['Model Name', 'Layer Name', 'Task Name']
+        non_metric_columns = list(set(non_metric_columns + essential_columns))
+        
+        metric_columns = [col for col in all_performance_df.columns if col not in non_metric_columns]
+        
+        df_melted = all_performance_df.melt(
+            id_vars=non_metric_columns,
+            value_vars=metric_columns,
+            var_name='Metric Name',
+            value_name='Metric Value'
         )
-
-        id_columns = ['Model Name', 'Layer Name', 'Task Name', 'Condition']
-        functions_columns = ['Distance Metric', 'Correlation Metric']
-        metric_columns = [
-            col for col in all_performance_df.columns if col not in id_columns + functions_columns
+        
+        df_melted = df_melted.dropna(subset=['Metric Value'])
+        
+        pivot_df = df_melted.pivot_table(
+            index=['Model Name', 'Layer Name'],
+            columns=['Task Name', 'Metric Name'],
+            values='Metric Value',
+            aggfunc='first'
+        ).reset_index()
+        
+        pivot_df.columns = [
+            ': '.join(col).strip() if isinstance(col, tuple) else col
+            for col in pivot_df.columns.values
         ]
 
-        summary_df = all_performance_df.set_index(id_columns)[metric_columns]
-        summary_df = summary_df.unstack('Task Name')
-        summary_df.columns = [
-            ' '.join(col).strip() if isinstance(col, tuple) else col for col in summary_df.columns.values
-        ]
-        summary_df.reset_index(inplace=True)
-
-        output_file = os.path.join(export_path, f'{date.today()}_models_unified_summary.csv')
-        summary_df.to_csv(output_file, index=False)
+        output_path = os.path.join(export_path, f'{date.today()}_models unified results.csv')
+        pivot_df.to_csv(output_path, index=False)
 
     def run_task(
         self,
@@ -339,8 +350,6 @@ class MultiModelTaskManager:
         selected_task = self.tasks[task_name]
         selected_model = self.models[model_name]
         pairs_df = selected_task.pairs_df.copy()
-        pairs_df['pair_id'] = pairs_df.apply(self._compute_pair_id, axis=1)
-        pairs_df.insert(0, 'pair_id', pairs_df.pop('pair_id'))
 
         images_folder_path = selected_task.images_path
 
@@ -349,12 +358,10 @@ class MultiModelTaskManager:
             if print_log:
                 print(f'No data to process for task "{task_name}" with model "{model_name}".')
             return
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=os.cpu_count())
         distances_df = self._process_batches(dataloader, selected_model, selected_task)
 
-        pairs_distances_df = pairs_df.merge(distances_df, how='left', on='pair_id')
-        pairs_distances_df = pairs_distances_df.rename(columns={'img1_x': 'img1', 'img2_x': 'img2'})
-        pairs_distances_df = pairs_distances_df.drop(columns=['img1_y', 'img2_y'])
+        pairs_distances_df = pairs_df.merge(distances_df, on=['img1', 'img2'], how='left')
 
         if model_name not in self.model_task_distances_dfs:
             self.model_task_distances_dfs[model_name] = {}
@@ -366,16 +373,10 @@ class MultiModelTaskManager:
         self._update_tasks_performance(task_name, task_performance_df)
 
         self.export_computed_metrics(export_path)
-        # self.export_unified_summary(export_path)
+        self.export_unified_summary(export_path)
 
         if print_log:
             print(f'Processed task "{task_name}" for model "{model_name}".')
-
-    def _compute_pair_id(self, row):
-        img_names = sorted([row['img1'], row['img2']])
-        concatenated_names = '_'.join(img_names)
-        pair_hash = hashlib.sha256(concatenated_names.encode()).hexdigest()
-        return pair_hash
 
     def _process_batches(
         self,
@@ -403,20 +404,19 @@ class MultiModelTaskManager:
         records = []
         with torch.no_grad():
             for batch in dataloader:
-                img1_tensors, img2_tensors, img1_names, img2_names, pair_ids = batch
-                img1_tensors = img1_tensors.to(model.device)
-                img2_tensors = img2_tensors.to(model.device)
+                img1_tensors, img2_tensors, img1_names, img2_names = batch
+                img1_tensors = img1_tensors.to(model.device, non_blocking=True)
+                img2_tensors = img2_tensors.to(model.device, non_blocking=True)
                 batch_outputs1 = model.get_output(img1_tensors)
                 batch_outputs2 = model.get_output(img2_tensors)
                 layer_names = ['default'] if not model.extract_layers else model.extract_layers
 
                 batch_records = self._compute_distances_for_batch(
-                    batch_outputs1, batch_outputs2, img1_names, img2_names, pair_ids, layer_names, task
+                    batch_outputs1, batch_outputs2, img1_names, img2_names, layer_names, task
                 )
                 records.extend(batch_records)
 
                 del img1_tensors, img2_tensors, batch_outputs1, batch_outputs2
-                torch.cuda.empty_cache()
         distances_df = pd.DataFrame.from_records(records)
         return distances_df
 
@@ -426,7 +426,6 @@ class MultiModelTaskManager:
         outputs2: Dict[str, torch.Tensor],
         img1_names: List[str],
         img2_names: List[str],
-        pair_ids: torch.Tensor,
         layer_names: List[str],
         task: BaseTask
     ) -> List[Dict[str, Any]]:
@@ -443,8 +442,6 @@ class MultiModelTaskManager:
             List of image names for the first set.
         img2_names : list
             List of image names for the second set.
-        pair_ids : torch.Tensor
-            Tensor of pair identifiers.
         layer_names : list
             List of layer names.
         task : BaseTask
@@ -456,8 +453,7 @@ class MultiModelTaskManager:
             List of records containing computed distances and metadata.
         """
         records = []
-        for i in range(len(pair_ids)):
-            pair_id = pair_ids[i].item()
+        for i in range(len(img1_names)):
             img1_name = img1_names[i]
             img2_name = img2_names[i]
             for layer_name in layer_names:
@@ -474,7 +470,6 @@ class MultiModelTaskManager:
                     d = d.item()
 
                 record = {
-                    'pair_id': pair_id,
                     'img1': img1_name,
                     'img2': img2_name,
                     'layer_name': layer_name,

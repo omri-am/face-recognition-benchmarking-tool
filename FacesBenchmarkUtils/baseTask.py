@@ -125,7 +125,7 @@ class PlotHelper:
                 correlation_score = row['Correlation Score']
 
                 d_data = distances[model_name][task_name]
-                d_data_layer = d_data[d_data['Layer Name'] == layer_name]
+                d_data_layer = d_data[d_data['layer_name'] == layer_name]
 
                 ax = axs[idx]
                 sns.regplot(
