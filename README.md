@@ -235,257 +235,245 @@ The following tasks have been implemented by extending `BaseTask`:
 ##### AccuracyTask
 
 Computes the accuracy of the model by comparing the predicted similarities against true labels.
-<details>
-  <summary>AccuracyTask Class Code<summary>
 
-  ```python
-  class AccuracyTask(BaseTask):
-      def __init__(
-          self,
-          name: str,
-          pairs_file_path: str,
-          images_path: str,
-          distance_metric: Callable[[Any, Any], float],
-          true_label: str = 'truth'
-      ) -> None:
-          super().__init__(
-              name=name,
-              pairs_file_path=pairs_file_path,
-              images_path=images_path,
-              distance_metric=distance_metric
-          )
-          self.true_label = true_label
-          self.distance_metric_name = distance_metric.__name__
+```python
+class AccuracyTask(BaseTask):
+    def __init__(
+        self,
+        name: str,
+        pairs_file_path: str,
+        images_path: str,
+        distance_metric: Callable[[Any, Any], float],
+        true_label: str = 'truth'
+    ) -> None:
+        super().__init__(
+            name=name,
+            pairs_file_path=pairs_file_path,
+            images_path=images_path,
+            distance_metric=distance_metric
+        )
+        self.true_label = true_label
+        self.distance_metric_name = distance_metric.__name__
 
-      def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
-          pairs_distances_df['similarity'] = 1 - pairs_distances_df['model_computed_distance']
-          y_true = self.pairs_df[self.true_label].values
-          y_scores = pairs_distances_df['similarity'].values
+    def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
+        pairs_distances_df['similarity'] = 1 - pairs_distances_df['model_computed_distance']
+        y_true = self.pairs_df[self.true_label].values
+        y_scores = pairs_distances_df['similarity'].values
 
-          auc = roc_auc_score(y_true, y_scores)
+        auc = roc_auc_score(y_true, y_scores)
 
-          fpr, tpr, thresholds = roc_curve(y_true, y_scores)
-          optimal_idx = np.argmax(tpr - fpr)
-          optimal_threshold = thresholds[optimal_idx]
+        fpr, tpr, thresholds = roc_curve(y_true, y_scores)
+        optimal_idx = np.argmax(tpr - fpr)
+        optimal_threshold = thresholds[optimal_idx]
 
-          y_pred = (y_scores > optimal_threshold).astype(int)
-          accuracy = accuracy_score(y_true, y_pred)
+        y_pred = (y_scores > optimal_threshold).astype(int)
+        accuracy = accuracy_score(y_true, y_pred)
 
-          return pd.DataFrame({
-              'Accuracy': [round(accuracy, 5)],
-              'Optimal Threshold': [round(optimal_threshold, 5)],
-              'AUC': [round(auc, 5)],
-              'Distance Metric': [self.distance_metric_name]
-          })
+        return pd.DataFrame({
+            'Accuracy': [round(accuracy, 5)],
+            'Optimal Threshold': [round(optimal_threshold, 5)],
+            'AUC': [round(auc, 5)],
+            'Distance Metric': [self.distance_metric_name]
+        })
 
-      @staticmethod
-      def plot(output_dir: str, performances: pd.DataFrame, *optional: Any) -> None:
-          PlotHelper.bar_plot(
-              performances=performances,
-              y='Accuracy',
-              ylabel='Accuracy',
-              ylim=(0, 1.1),
-              title_prefix='Accuracy Score Comparison',
-              output_dir=output_dir,
-              file_name='accuracy_comparison'
-          )
-  ```
-</details>
+    @staticmethod
+    def plot(output_dir: str, performances: pd.DataFrame, *optional: Any) -> None:
+        PlotHelper.bar_plot(
+            performances=performances,
+            y='Accuracy',
+            ylabel='Accuracy',
+            ylim=(0, 1.1),
+            title_prefix='Accuracy Score Comparison',
+            output_dir=output_dir,
+            file_name='accuracy_comparison'
+        )
+```
 
 ##### CorrelationTask
 
 Computes the correlation between the model-computed distances and given distances.
-<details>
-  <summary>CorrelationTask Class Code<summary>
 
-  ```python
-  class CorrelationTask(BaseTask):
-      def __init__(
-          self,
-          name: str,
-          pairs_file_path: str,
-          images_path: str,
-          distance_metric: Callable[[Any, Any], float],
-          correlation_metric: Callable[[Any, Any], np.ndarray] = np.corrcoef
-      ) -> None:
-          super().__init__(
-              name=name,
-              pairs_file_path=pairs_file_path,
-              images_path=images_path,
-              distance_metric=distance_metric
-          )
-          self.correlation_metric = correlation_metric
-          self.distance_metric_name = distance_metric.__name__
-          self.correlation_metric_name = correlation_metric.__name__
-          if 'distance' not in self.pairs_df.columns:
-              raise Exception('distance column not found in csv!')
+```python
+class CorrelationTask(BaseTask):
+    def __init__(
+        self,
+        name: str,
+        pairs_file_path: str,
+        images_path: str,
+        distance_metric: Callable[[Any, Any], float],
+        correlation_metric: Callable[[Any, Any], np.ndarray] = np.corrcoef
+    ) -> None:
+        super().__init__(
+            name=name,
+            pairs_file_path=pairs_file_path,
+            images_path=images_path,
+            distance_metric=distance_metric
+        )
+        self.correlation_metric = correlation_metric
+        self.distance_metric_name = distance_metric.__name__
+        self.correlation_metric_name = correlation_metric.__name__
+        if 'distance' not in self.pairs_df.columns:
+            raise Exception('distance column not found in csv!')
 
-      def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
-          computed_distances = pairs_distances_df['model_computed_distance'].values
-          true_distances = self.pairs_df['distance'].values
+    def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
+        computed_distances = pairs_distances_df['model_computed_distance'].values
+        true_distances = self.pairs_df['distance'].values
 
-          correlation_result = self.correlation_metric(computed_distances, true_distances)
+        correlation_result = self.correlation_metric(computed_distances, true_distances)
 
-          if isinstance(correlation_result, np.ndarray):
-              correlation = correlation_result[0, 1]
-          elif isinstance(correlation_result, tuple):
-              correlation = correlation_result[0]
-          else:
-              correlation = correlation_result
+        if isinstance(correlation_result, np.ndarray):
+            correlation = correlation_result[0, 1]
+        elif isinstance(correlation_result, tuple):
+            correlation = correlation_result[0]
+        else:
+            correlation = correlation_result
 
-          return pd.DataFrame({
-              'Correlation Score': [round(correlation, 5)],
-              'Distance Metric': [self.distance_metric_name],
-              'Correlation Metric': [self.correlation_metric_name]
-          })
+        return pd.DataFrame({
+            'Correlation Score': [round(correlation, 5)],
+            'Distance Metric': [self.distance_metric_name],
+            'Correlation Metric': [self.correlation_metric_name]
+        })
 
-      @staticmethod
-      def plot(
-          output_dir: str,
-          performances: pd.DataFrame,
-          distances: Dict[str, Dict[str, pd.DataFrame]],
-          *optional: Any
-      ) -> None:
-          PlotHelper.scatter_plot(
-              performances=performances,
-              distances=distances,
-              output_dir=output_dir,
-              file_name='scatters_comparison'
-          )
-          PlotHelper.bar_plot(
-              performances=performances,
-              y='Correlation Score',
-              ylabel='Correlation Coefficient (r)',
-              ylim=(0, 1.1),
-              title_prefix='Correlation Coefficient Comparison',
-              output_dir=output_dir,
-              file_name='correlation_comparison'
-          )
-  ```
-</details>
+    @staticmethod
+    def plot(
+        output_dir: str,
+        performances: pd.DataFrame,
+        distances: Dict[str, Dict[str, pd.DataFrame]],
+        *optional: Any
+    ) -> None:
+        PlotHelper.scatter_plot(
+            performances=performances,
+            distances=distances,
+            output_dir=output_dir,
+            file_name='scatters_comparison'
+        )
+        PlotHelper.bar_plot(
+            performances=performances,
+            y='Correlation Score',
+            ylabel='Correlation Coefficient (r)',
+            ylim=(0, 1.1),
+            title_prefix='Correlation Coefficient Comparison',
+            output_dir=output_dir,
+            file_name='correlation_comparison'
+        )
+```
 
 ##### ConditionedAverageDistances
 
 Computes the average distances for different conditions specified in the pairs file.
-<details>
-  <summary>ConditionedAverageDistances Class Code<summary>
 
-  ```python
-  class ConditionedAverageDistances(BaseTask):
-      def __init__(
-          self,
-          name: str,
-          pairs_file_path: str,
-          images_path: str,
-          distance_metric: Callable[[Any, Any], float],
-          condition_column: str = 'condition',
-          normalize: bool = True
-      ) -> None:
-          super().__init__(
-              name=name,
-              pairs_file_path=pairs_file_path,
-              images_path=images_path,
-              distance_metric=distance_metric
-          )
-          self.distance_metric_name = distance_metric.__name__
-          self.normalize = normalize
-          self.pairs_df.rename(columns={condition_column: 'condition'}, inplace=True)
+```python
+class ConditionedAverageDistances(BaseTask):
+    def __init__(
+        self,
+        name: str,
+        pairs_file_path: str,
+        images_path: str,
+        distance_metric: Callable[[Any, Any], float],
+        condition_column: str = 'condition',
+        normalize: bool = True
+    ) -> None:
+        super().__init__(
+            name=name,
+            pairs_file_path=pairs_file_path,
+            images_path=images_path,
+            distance_metric=distance_metric
+        )
+        self.distance_metric_name = distance_metric.__name__
+        self.normalize = normalize
+        self.pairs_df.rename(columns={condition_column: 'condition'}, inplace=True)
 
-      def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
-          if self.normalize:
-              max_distance = pairs_distances_df['model_computed_distance'].max()
-              if max_distance != 0:
-                  pairs_distances_df['normalized_distance'] = pairs_distances_df['model_computed_distance'] / max_distance
-          else:
-              pairs_distances_df['normalized_distance'] = pairs_distances_df['model_computed_distance']
+    def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
+        if self.normalize:
+            max_distance = pairs_distances_df['model_computed_distance'].max()
+            if max_distance != 0:
+                pairs_distances_df['normalized_distance'] = pairs_distances_df['model_computed_distance'] / max_distance
+        else:
+            pairs_distances_df['normalized_distance'] = pairs_distances_df['model_computed_distance']
 
-          avg_distances = pairs_distances_df.groupby(['condition'])['normalized_distance'].mean().reset_index()
-          avg_distances.rename(columns={'normalized_distance': 'Mean Value', 'condition': 'Condition'}, inplace=True)
-          avg_distances['Distance Metric'] = self.distance_metric_name
+        avg_distances = pairs_distances_df.groupby(['condition'])['normalized_distance'].mean().reset_index()
+        avg_distances.rename(columns={'normalized_distance': 'Mean Value', 'condition': 'Condition'}, inplace=True)
+        avg_distances['Distance Metric'] = self.distance_metric_name
 
-          return avg_distances
+        return avg_distances
 
-      @staticmethod
-      def plot(
-          output_dir: str,
-          performances: pd.DataFrame,
-          *optional: Any
-      ) -> None:
-          for condition, condition_df in performances.groupby('Condition'):
-              PlotHelper.bar_plot(
-                  performances=condition_df,
-                  y='Mean Value',
-                  ylabel='Average Distance',
-                  title_prefix=f'Average Distance Comparison - {condition}',
-                  output_dir=output_dir,
-                  file_name=f'average_distance_comparison_{condition}'
-              )
-  ```
-</details>
+    @staticmethod
+    def plot(
+        output_dir: str,
+        performances: pd.DataFrame,
+        *optional: Any
+    ) -> None:
+        for condition, condition_df in performances.groupby('Condition'):
+            PlotHelper.bar_plot(
+                performances=condition_df,
+                y='Mean Value',
+                ylabel='Average Distance',
+                title_prefix=f'Average Distance Comparison - {condition}',
+                output_dir=output_dir,
+                file_name=f'average_distance_comparison_{condition}'
+            )
+```
 
 ##### RelativeDifferenceTask
 
 Calculates the relative difference between two groups, useful for tasks like evaluating the Thatcher effect.
-<details>
-  <summary>ConditionedAverageDistances Class Code<summary>
 
-  ```python
-  class RelativeDifferenceTask(BaseTask):
-      def __init__(
-          self,
-          name: str,
-          pairs_file_path: str,
-          images_path: str,
-          distance_metric: Callable[[Any, Any], float],
-          group_column: str
-      ) -> None:
-          super().__init__(
-              name=name,
-              pairs_file_path=pairs_file_path,
-              images_path=images_path,
-              distance_metric=distance_metric
-          )
-          self.group_column = group_column
-          self.distance_metric_name = distance_metric.__name__
+```python
+class RelativeDifferenceTask(BaseTask):
+    def __init__(
+        self,
+        name: str,
+        pairs_file_path: str,
+        images_path: str,
+        distance_metric: Callable[[Any, Any], float],
+        group_column: str
+    ) -> None:
+        super().__init__(
+            name=name,
+            pairs_file_path=pairs_file_path,
+            images_path=images_path,
+            distance_metric=distance_metric
+        )
+        self.group_column = group_column
+        self.distance_metric_name = distance_metric.__name__
 
-      def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
-          unique_groups = pairs_distances_df[self.group_column].unique()
-          if len(unique_groups) != 2:
-              raise ValueError(
-                  f"The group column '{self.group_column}' must have exactly two unique values."
-              )
+    def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
+        unique_groups = pairs_distances_df[self.group_column].unique()
+        if len(unique_groups) != 2:
+            raise ValueError(
+                f"The group column '{self.group_column}' must have exactly two unique values."
+            )
 
-          group1 = pairs_distances_df[pairs_distances_df[self.group_column] == unique_groups[0]]
-          group2 = pairs_distances_df[pairs_distances_df[self.group_column] == unique_groups[1]]
+        group1 = pairs_distances_df[pairs_distances_df[self.group_column] == unique_groups[0]]
+        group2 = pairs_distances_df[pairs_distances_df[self.group_column] == unique_groups[1]]
 
-          group1_mean = group1['model_computed_distance'].mean()
-          group2_mean = group2['model_computed_distance'].mean()
+        group1_mean = group1['model_computed_distance'].mean()
+        group2_mean = group2['model_computed_distance'].mean()
 
-          relative_difference = (group1_mean - group2_mean) / (group1_mean + group2_mean)
+        relative_difference = (group1_mean - group2_mean) / (group1_mean + group2_mean)
 
-          return pd.DataFrame({
-              f'{unique_groups[0]} Mean': [group1_mean],
-              f'{unique_groups[1]} Mean': [group2_mean],
-              'Relative Difference': [round(relative_difference, 5)],
-              'Distance Metric': [self.distance_metric_name]
-          })
+        return pd.DataFrame({
+            f'{unique_groups[0]} Mean': [group1_mean],
+            f'{unique_groups[1]} Mean': [group2_mean],
+            'Relative Difference': [round(relative_difference, 5)],
+            'Distance Metric': [self.distance_metric_name]
+        })
 
-      @staticmethod
-      def plot(
-          output_dir: str,
-          performances: pd.DataFrame,
-          *optional: Any
-      ) -> None:
-          PlotHelper.bar_plot(
-              performances=performances,
-              y='Relative Difference',
-              ylabel='Relative Difference',
-              title_prefix='Relative Difference Comparison',
-              output_dir=output_dir,
-              file_name='relative_difference_comparison'
-          )
-  ```
-</details>
+    @staticmethod
+    def plot(
+        output_dir: str,
+        performances: pd.DataFrame,
+        *optional: Any
+    ) -> None:
+        PlotHelper.bar_plot(
+            performances=performances,
+            y='Relative Difference',
+            ylabel='Relative Difference',
+            title_prefix='Relative Difference Comparison',
+            output_dir=output_dir,
+            file_name='relative_difference_comparison'
+        )
+```
 
 #### Extending BaseTask
 
