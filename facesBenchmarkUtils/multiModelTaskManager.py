@@ -113,8 +113,6 @@ class MultiModelTaskManager:
         Adds tasks to the manager.
     add_models(models: Union[BaseModel, List[BaseModel]]) -> None
         Adds models to the manager.
-    group_tasks_by_type() -> Dict[type, pd.DataFrame]
-        Groups tasks by their class type.
     export_computed_metrics(export_path: str) -> None
         Exports computed metrics for each model and task to CSV files.
     export_model_results_by_task(export_path: str) -> None
@@ -198,7 +196,7 @@ class MultiModelTaskManager:
         for model in models:
             self.models[model.name] = model
 
-    def group_tasks_by_type(self) -> Dict[type, pd.DataFrame]:
+    def _group_tasks_by_type(self) -> Dict[type, pd.DataFrame]:
         """
         Groups tasks by their class type.
 
@@ -207,17 +205,40 @@ class MultiModelTaskManager:
         dict
             Dictionary where keys are task types and values are DataFrames of task results.
         """
-        task_type_groups: Dict[type, List[str]] = defaultdict(list)
+        task_type_groups = defaultdict(list)
         for task_name, task_info in self.tasks.items():
             task_type = type(task_info)
             task_type_groups[task_type].append(task_name)
 
-        task_type_dfs: Dict[type, pd.DataFrame] = {}
+        task_type_dfs = {}
         for task_type, task_names in task_type_groups.items():
             df_list = [self.tasks_performance_dfs[task_name] for task_name in task_names]
             if df_list:
                 task_type_dfs[task_type] = pd.concat(df_list)
         return task_type_dfs
+
+    def _transform_condition_to_columns(self, df):
+        """
+        Reshapes a dataframe long to wide, creating new column for each condition with its computed value.
+
+        Returns
+        -------
+        DataFrame
+            Dataframe with new columns containing the original numeric values.
+        """
+        if 'Condition' not in df.columns:
+            return df
+        df = df.copy()
+        numeric_column = next((col for col in df.columns if pd.api.types.is_numeric_dtype(df[col]) and col != 'Condition'), None)
+        if numeric_column is None:
+            raise ValueError("No numeric column found for processing.")
+        for condition in df['Condition'].unique():
+            new_column_name = f'{condition} {numeric_column}'
+            df[new_column_name] = df.apply(lambda x: x[numeric_column] if x['Condition'] == condition else None, axis=1)
+        
+        df.drop(columns=['Condition', numeric_column], inplace=True)
+        df_final = df.groupby(['Task Name', 'Model Name', 'Layer Name', 'Distance Metric']).first().reset_index()
+        return df_final
 
     def export_computed_metrics(self, export_path: str) -> None:
         """
@@ -255,7 +276,7 @@ class MultiModelTaskManager:
         export_path : str
             Path to the directory where the results will be exported.
         """
-        res_by_task_type = self.group_tasks_by_type()
+        res_by_task_type = self._group_tasks_by_type()
         for task_class, res in res_by_task_type.items():
             task_class_folder = os.path.join(export_path, f'{task_class.__name__} Plots')
             os.makedirs(task_class_folder, exist_ok=True)
@@ -278,7 +299,7 @@ class MultiModelTaskManager:
         """
         performance_dfs = []
         for _, task_performance_df in self.tasks_performance_dfs.items():
-            performance_dfs.append(task_performance_df)
+            performance_dfs.append(self._transform_condition_to_columns(task_performance_df))
         all_performance_df = pd.concat(performance_dfs, ignore_index=True)
 
         non_metric_columns = all_performance_df.select_dtypes(exclude=[np.number]).columns.tolist()
@@ -304,11 +325,11 @@ class MultiModelTaskManager:
         ).reset_index()
         
         pivot_df.columns = [
-            ': '.join(col).strip() if isinstance(col, tuple) else col
+            ': '.join(col).strip() if isinstance(col, tuple) and col[1] else col[0]
             for col in pivot_df.columns.values
         ]
 
-        output_path = os.path.join(export_path, 'models unified results.csv')
+        output_path = os.path.join(export_path, 'models_unified_results.csv')
         pivot_df.to_csv(output_path, index=False)
 
     def run_task(
@@ -501,6 +522,11 @@ class MultiModelTaskManager:
             DataFrame containing performance metrics.
         """
         task_performance_list = []
+        
+        model = self.models[model_name].model
+        layers = list(model.named_modules())
+        layer_order = {name: idx for idx, (name, _) in enumerate(layers)}
+
         for layer_name, group_df in pairs_distances_df.groupby('layer_name'):
             task_performance = task.compute_task_performance(group_df)
 
@@ -509,12 +535,15 @@ class MultiModelTaskManager:
                     'Task Name': task_name,
                     'Model Name': model_name,
                     'Layer Name': layer_name,
+                    'Layer Order': layer_order.get(layer_name, -1)
                 }
                 result_data.update(row.to_dict())
                 task_result = pd.DataFrame([result_data])
                 task_performance_list.append(task_result)
 
         task_performance_df = pd.concat(task_performance_list, ignore_index=True)
+        task_performance_df.sort_values(by=['Model Name', 'Layer Order'], inplace=True)
+        task_performance_df.drop(columns=['Layer Order'], inplace=True)
         return task_performance_df
 
     def _update_tasks_performance(

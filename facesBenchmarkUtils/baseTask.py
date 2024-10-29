@@ -23,7 +23,7 @@ class PlotHelper:
     """
 
     @staticmethod
-    def bar_plot(performances, y, ylabel, title_prefix, output_dir, file_name, ylim=None):
+    def bar_plot(performances, y, ylabel, title_prefix, output_dir, file_name, x=None, xlabel=None, ylim=None):
         """
         Creates and saves bar plots for task performances.
 
@@ -31,6 +31,10 @@ class PlotHelper:
         ----------
         performances : pandas.DataFrame
             DataFrame containing performance metrics for each model and task.
+        x : str
+            The column name in `performances` to be used as the x-axis value.
+        xlabel : str
+            Label for the x-axis.
         y : str
             The column name in `performances` to be used as the y-axis value.
         ylabel : str
@@ -55,7 +59,10 @@ class PlotHelper:
             width = max(round(len(task_data['Model-Layer'].unique()) / 20 * 12), 12)
             plt.figure(figsize=(width, 8))
 
-            ax = sns.barplot(x='Model-Layer', y=y, data=task_data, hue='Model-Layer')
+            x = x if x else 'Model-Layer'
+            xlabel = xlabel if xlabel else 'Model-Layer'
+
+            ax = sns.barplot(x=x, y=y, data=task_data, hue=x)
 
             locations = ax.get_xticks()
             labels = [item.get_text() for item in ax.get_xticklabels()]
@@ -65,12 +72,12 @@ class PlotHelper:
             for p in ax.patches:
                 ax.annotate(f'{p.get_height():.2f}',
                             (p.get_x() + p.get_width() / 2., p.get_height()),
-                            ha='center', va='center', fontsize=11, color='black',
+                            ha='center', va='center', fontsize=14, color='black',
                             xytext=(0, 5), textcoords='offset points')
 
             plt.title(f'{title_prefix}: {task_name}', fontsize=SUPTITLE_SIZE)
             plt.ylabel(ylabel)
-            plt.xlabel('Model-Layer')
+            plt.xlabel(xlabel)
             if ylim:
                 plt.ylim(ylim)
 

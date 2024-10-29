@@ -92,12 +92,15 @@ class ConditionedAverageDistances(BaseTask):
         -------
         None
         """
-        for condition, condition_df in performances.groupby('Condition'):
+        performances['Model-Layer'] = performances.apply(create_model_layer_column, axis=1)
+        for model_layer_name, model_layer_df in performances.groupby('Model-Layer'):
             PlotHelper.bar_plot(
-                performances=condition_df,
-                y=f'Mean Value',
+                performances=model_layer_df,
+                x='Condition',
+                xlabel='Condition',
+                y='Mean Value',
                 ylabel='Average Distance',
-                title_prefix=f'Average Distance Comparison - {condition}',
+                title_prefix=f'Average Distance Comparison Across Conditions - {model_layer_name}',
                 output_dir=output_dir,
-                file_name=f'average_distance_comparison: {condition}'
+                file_name=f'average_distance_cond_comparison: {model_layer_name}'
             )

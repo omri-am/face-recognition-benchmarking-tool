@@ -134,7 +134,7 @@ class BaseModel(ABC):
             self.to()
             self.model.eval()
 
-    def print_layer_names(self, simplified: bool = False) -> None:
+    def get_layer_names(self, simplified: bool = False) -> None:
         """
         Prints the names of all layers in the model.
 

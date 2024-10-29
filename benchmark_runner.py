@@ -50,7 +50,8 @@ def main():
                         'classifier.3',
                         'classifier.4',
                         'classifier.5',
-                        'classifier.6']
+                        'classifier.6'
+                        ]
     
     vgg16_trained = Vgg16Model(name='VGG16-trained',
                                weights_path='/home/new_storage/experiments/face_memory_task/models/face_trained_vgg16_119.pth',
@@ -238,22 +239,22 @@ def main():
             # vit16
             ],
         tasks = [
-            lfw_acc,
+            # lfw_acc,
             upright_acc, 
-            inverted_acc, 
-            same_diff_visual_int_task,
-            same_diff_memory_int_task,
-            same_diff_DP_int_task,
-            same_diff_SP_int_task,
-            familiar_il_task,
-            unfamiliar_il_task,
-            other_race_caucasian, 
-            other_race_asian,
-            thatcher_task,
+            # inverted_acc, 
+            # same_diff_visual_int_task,
+            # same_diff_memory_int_task,
+            # same_diff_DP_int_task,
+            # same_diff_SP_int_task,
+            # familiar_il_task,
+            # unfamiliar_il_task,
+            # other_race_caucasian, 
+            # other_race_asian,
+            # thatcher_task,
             critical_features_conditioned,
-            critical_features_conditioned_normalized,
-            critical_features_critical_dis,
-            critical_features_noncritical_dis
+            # critical_features_conditioned_normalized,
+            # critical_features_critical_dis,
+            # critical_features_noncritical_dis
             ])
     
     multimodel_manager2 = MultiModelTaskManager(
@@ -268,27 +269,27 @@ def main():
             # vit16
             ],
         tasks = [
-            lfw_acc,
-            upright_acc, 
-            inverted_acc, 
-            same_diff_visual_int_task,
-            same_diff_memory_int_task,
-            same_diff_DP_int_task,
-            same_diff_SP_int_task,
-            familiar_il_task,
-            unfamiliar_il_task,
-            other_race_caucasian, 
-            other_race_asian,
-            thatcher_task,
+            # lfw_acc,
+            # upright_acc, 
+            # inverted_acc, 
+            # same_diff_visual_int_task,
+            # same_diff_memory_int_task,
+            # same_diff_DP_int_task,
+            # same_diff_SP_int_task,
+            # familiar_il_task,
+            # unfamiliar_il_task,
+            # other_race_caucasian, 
+            # other_race_asian,
+            # thatcher_task,
             critical_features_conditioned,
-            critical_features_conditioned_normalized,
-            critical_features_critical_dis,
-            critical_features_noncritical_dis
+            # critical_features_conditioned_normalized,
+            # critical_features_critical_dis,
+            # critical_features_noncritical_dis
             ])
 
     path = os.path.join(os.getcwd(),'results',f'{date.today()}',f"{datetime.now().strftime('%H%M')}")
     multimodel_manager.run_all_tasks_all_models(export_path=path, print_log=True)
-    path = os.path.join(os.getcwd(),'results',f'{date.today()}',f"{datetime.now().strftime('%H%M')}")
+    path = os.path.join(os.getcwd(),'results',f'{date.today()}',f"{datetime.now().strftime('%H%M')}_2")
     multimodel_manager2.run_all_tasks_all_models(export_path=path, print_log=True)
 
 if __name__ == '__main__':
