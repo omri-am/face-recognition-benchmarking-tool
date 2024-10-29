@@ -1,13 +1,13 @@
 import os
-from datetime import date
 from collections import defaultdict
 from typing import Any, Dict, List, Tuple, Union
 from .baseModel import BaseModel
+from .baseTask import BaseTask
 
 import torch
 from torch.utils.data import Dataset, DataLoader
 import pandas as pd
-from .implementedTasks import *
+import numpy as np
 
 class PairDataset(Dataset):
     """
@@ -279,13 +279,9 @@ class MultiModelTaskManager:
         performance_dfs = []
         for _, task_performance_df in self.tasks_performance_dfs.items():
             performance_dfs.append(task_performance_df)
-
         all_performance_df = pd.concat(performance_dfs, ignore_index=True)
-        output_path = os.path.join(export_path, f'{date.today()}all performance.csv')
-        all_performance_df.to_csv(export_path, output_path)
 
         non_metric_columns = all_performance_df.select_dtypes(exclude=[np.number]).columns.tolist()
-    
         essential_columns = ['Model Name', 'Layer Name', 'Task Name']
         non_metric_columns = list(set(non_metric_columns + essential_columns))
         
@@ -312,7 +308,7 @@ class MultiModelTaskManager:
             for col in pivot_df.columns.values
         ]
 
-        output_path = os.path.join(export_path, f'{date.today()}_models unified results.csv')
+        output_path = os.path.join(export_path, 'models unified results.csv')
         pivot_df.to_csv(output_path, index=False)
 
     def run_task(

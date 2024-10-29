@@ -1,14 +1,12 @@
-from FacesBenchmarkUtils import *
-from clipModel import *
-from dinoModel import *
-from vgg16Model import *
-from datetime import datetime
+from facesBenchmarkUtils import *
+from models import *
+from tasks import *
+from datetime import datetime, date
 
 def batch_cosine_distance(tensor1: torch.Tensor, tensor2: torch.Tensor) -> torch.Tensor:
     cosine_sim = torch.nn.functional.cosine_similarity(tensor1, tensor2, dim=1)
     cosine_dist = 1 - cosine_sim
     return cosine_dist
-
 
 def main():
     torch.cuda.empty_cache()
@@ -187,39 +185,53 @@ def main():
         name = 'Thatcher Effect'
         )
     
-    Conditioned_pairs = os.path.join(os.getcwd(), 'tests_datasets/critical_features/critical_features_all_conditions.csv')
-    Conditioned_images_path = os.path.join(os.getcwd(), 'tests_datasets/critical_features/img_dataset/joined')
+    conditioned_pairs = os.path.join(os.getcwd(), 'tests_datasets/critical_features/critical_features_all_conditions.csv')
+    critical_distances_pairs = os.path.join(os.getcwd(), 'tests_datasets/critical_features/critical_features_critical_distances.csv')
+    noncritical_distances_pairs = os.path.join(os.getcwd(), 'tests_datasets/critical_features/critical_features_noncritical_distances.csv')
+    conditioned_images_path = os.path.join(os.getcwd(), 'tests_datasets/critical_features/img_dataset/joined')
 
-    Conditioned_avg_dist_task = ConditionedAverageDistances(
-        pairs_file_path = Conditioned_pairs,
-        images_path = Conditioned_images_path,
+    critical_features_conditioned = ConditionedAverageDistances(
+        pairs_file_path = conditioned_pairs,
+        images_path = conditioned_images_path,
         condition_column = 'cond',
         distance_metric = batch_cosine_distance,
         normalize = False,
-        name = 'critical features'
+        name = 'Critical Features'
         )
 
-    Conditioned_avg_dist_task_normsalized = ConditionedAverageDistances(
-        pairs_file_path = Conditioned_pairs,
-        images_path = Conditioned_images_path,
+    critical_features_conditioned_normalized = ConditionedAverageDistances(
+        pairs_file_path = conditioned_pairs,
+        images_path = conditioned_images_path,
         condition_column = 'cond',
         distance_metric = batch_cosine_distance,
         normalize = True,
-        name = 'critical features normalized'
+        name = 'Critical Features Normalized'
+        )
+    
+    critical_features_critical_dis = CorrelationTask(
+        pairs_file_path = critical_distances_pairs,
+        images_path = conditioned_images_path,
+        name = 'Critical Features Critical Distances',
+        distance_metric = batch_cosine_distance,
+        correlation_metric = np.corrcoef
+        )
+    
+    critical_features_noncritical_dis = CorrelationTask(
+        pairs_file_path = noncritical_distances_pairs,
+        images_path = conditioned_images_path,
+        name = 'Critical Features Non-Critical Distances',
+        distance_metric = batch_cosine_distance,
+        correlation_metric = np.corrcoef
         )
 
     ## multi model manager ##
 
-    # multimodel = MultiModelTaskManager(models = [vgg16_trained],
-    #                                    tasks = [upright_acc, inverted_acc])
-    # multimodel.run_all_tasks_all_models(export_path = os.path.join(os.getcwd(), f'results/{date.today()}'))
-
     multimodel_manager = MultiModelTaskManager(
         models = [
-            vgg16_trained_all,
-            # vgg16_trained,
-            vgg16_untrained_all, 
-            # vgg16_untrained,
+            # vgg16_trained_all,
+            vgg16_trained,
+            # vgg16_untrained_all, 
+            vgg16_untrained,
             clip_model, 
             dinoV2, 
             # vit8, 
@@ -238,12 +250,46 @@ def main():
             other_race_caucasian, 
             other_race_asian,
             thatcher_task,
-            Conditioned_avg_dist_task,
-            Conditioned_avg_dist_task_normsalized
+            critical_features_conditioned,
+            critical_features_conditioned_normalized,
+            critical_features_critical_dis,
+            critical_features_noncritical_dis
+            ])
+    
+    multimodel_manager2 = MultiModelTaskManager(
+        models = [
+            vgg16_trained_all,
+            # vgg16_trained,
+            # vgg16_untrained_all, 
+            # vgg16_untrained,
+            # clip_model, 
+            # dinoV2, 
+            # vit8, 
+            # vit16
+            ],
+        tasks = [
+            lfw_acc,
+            upright_acc, 
+            inverted_acc, 
+            same_diff_visual_int_task,
+            same_diff_memory_int_task,
+            same_diff_DP_int_task,
+            same_diff_SP_int_task,
+            familiar_il_task,
+            unfamiliar_il_task,
+            other_race_caucasian, 
+            other_race_asian,
+            thatcher_task,
+            critical_features_conditioned,
+            critical_features_conditioned_normalized,
+            critical_features_critical_dis,
+            critical_features_noncritical_dis
             ])
 
     path = os.path.join(os.getcwd(),'results',f'{date.today()}',f"{datetime.now().strftime('%H%M')}")
     multimodel_manager.run_all_tasks_all_models(export_path=path, print_log=True)
+    path = os.path.join(os.getcwd(),'results',f'{date.today()}',f"{datetime.now().strftime('%H%M')}")
+    multimodel_manager2.run_all_tasks_all_models(export_path=path, print_log=True)
 
 if __name__ == '__main__':
     main()

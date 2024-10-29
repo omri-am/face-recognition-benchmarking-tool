@@ -1,4 +1,7 @@
-from FacesBenchmarkUtils import *
+from facesBenchmarkUtils.baseModel import *
+import subprocess
+import sys
+
 def pipinstall(command):    
     try:
         subprocess.check_call(command)

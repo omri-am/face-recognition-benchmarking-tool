@@ -1,4 +1,4 @@
-from FacesBenchmarkUtils import *
+from facesBenchmarkUtils.baseModel import *
 import importlib.util
 import subprocess
 import sys
