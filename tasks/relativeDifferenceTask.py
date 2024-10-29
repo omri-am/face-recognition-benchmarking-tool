@@ -50,8 +50,10 @@ class RelativeDifferenceTask(BaseTask):
             images_path=images_path,
             distance_metric=distance_metric
         )
-        self.group_column: str = group_column
-        self.distance_metric_name: str = distance_metric.__name__
+        if group_column not in self.pairs_df.columns:
+            raise(Exception(f'{group_column} column does not exist in the input pairs file!'))
+        else:
+            self.group_column: str = group_column
 
     def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
         """

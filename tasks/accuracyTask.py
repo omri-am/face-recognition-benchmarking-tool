@@ -28,7 +28,7 @@ class AccuracyTask(BaseTask):
         pairs_file_path: str,
         images_path: str,
         distance_metric: Callable[[Any, Any], float],
-        true_label: str = 'truth'
+        true_label: str
     ) -> None:
         """
         Initializes the AccuracyTask instance.
@@ -45,7 +45,6 @@ class AccuracyTask(BaseTask):
             Function to compute the distance between image embeddings.
         true_label : str, optional
             Column name in the pairs file indicating the ground truth labels.
-            Defaults to 'truth'.
         """
         super().__init__(
             name=name,
@@ -53,8 +52,10 @@ class AccuracyTask(BaseTask):
             images_path=images_path,
             distance_metric=distance_metric
         )
-        self.true_label: str = true_label
-        self.distance_metric_name: str = distance_metric.__name__
+        if true_label not in self.pairs_df.columns:
+            raise(Exception(f'{true_label} column does not exist in the input pairs file!'))
+        else:
+            self.true_label = true_label
 
     def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
         """

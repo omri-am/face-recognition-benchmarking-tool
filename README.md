@@ -17,6 +17,7 @@ Welcome to the **Face Recognition Benchmarking Tool**! This project is designed 
   - [PlotHelper](#plothelper)
 - [Getting Started](#getting-started)
   - [Installation](#installation)
+  - [Directory Structure](#directory-structure)
   - [Usage](#usage)
     - [Example: Running Experiments](#example-running-experiments)
     - [Example: Implementing Custom Models and Tasks](#example-implementing-custom-models-and-tasks)
@@ -532,41 +533,6 @@ The `MultiModelTaskManager` orchestrates the execution of multiple models across
 - **Export Utilities**: Exports computed metrics and unified summaries to CSV files.
 - **Parallel Processing**: Utilizes DataLoader and batching for efficient computation.
 
-#### MultiModelTaskManager Class Structure
-
-```python
-class MultiModelTaskManager:
-    def __init__(
-        self,
-        models: Union[BaseModel, List[BaseModel]],
-        tasks: Union[BaseTask, List[BaseTask]],
-        batch_size: int = 32
-    ) -> None:
-        self.tasks: Dict[str, BaseTask] = {}
-        self.add_tasks(tasks)
-        self.models: Dict[str, BaseModel] = {}
-        self.add_models(models)
-        self.model_task_distances_dfs: Dict[str, Dict[str, pd.DataFrame]] = {
-            model: {} for model in self.models
-        }
-        self.tasks_performance_dfs: Dict[str, pd.DataFrame] = {}
-        self.batch_size: int = batch_size
-
-    def run_all_tasks_all_models(
-        self,
-        export_path: str = os.getcwd(),
-        print_log: bool = False
-    ) -> None:
-        os.makedirs(export_path, exist_ok=True)
-        for model_name in self.models:
-            self.run_all_tasks_with_model(model_name, export_path, print_log)
-        if print_log:
-            print(f'Finished processing all the tasks for all the models.')
-        self.export_model_results_by_task(export_path)
-        if print_log:
-            print(f'Finished plotting all the tasks for all the models.')
-```
-
 #### Key Methods
 
 - `add_tasks`: Adds tasks to the manager.
@@ -597,11 +563,112 @@ The `PlotHelper` class provides static methods for generating plots from the tas
 
 ### Installation
 
-To install the required dependencies, run:
+To get started with the Face Recognition Benchmarking Tool, follow these steps:
 
-```bash
-pip install -r requirements.txt
-```
+1. **Clone the Repository**
+
+   ```bash
+   git clone https://github.com/your-username/face-recognition-benchmarking-tool.git
+   cd face-recognition-benchmarking-tool
+   ```
+
+2. **Install Dependencies**
+
+   Install the required Python packages using `pip` or your desired package installer:
+
+   ```bash
+   pip install torch torchvision pandas numpy matplotlib scikit-learn Pillow tqdm transformers
+   ```
+
+   Make sure you have Python 3.7 or higher installed.
+
+3. **Organize the Directory Structure**
+
+   The project is organized into several directories, each serving a specific purpose. Upon cloning/downloading the repository, the below would be the structure of the project on your machine. This is the reccommended structure so you could easily follow these instructions. 
+
+   ```plaintext
+   face-recognition-benchmarking-tool/
+   ├── models/
+   │   ├── __init__.py
+   │   ├── vgg16Model.py
+   │   ├── dinoModel.py
+   │   └── clipModel.py
+   ├── tasks/
+   │   ├── __init__.py
+   │   ├── accuracyTask.py
+   │   ├── correlationTask.py
+   │   ├── conditionedAverageDistances.py
+   │   └── relativeDifferenceTask.py
+   ├── facesBenchmarkUtils/
+   │   ├── __init__.py
+   │   ├── baseModel.py
+   │   ├── baseTask.py
+   │   └── multiModelTaskManager.py
+   ├── benchmark_runner.py
+   ├── README.md
+   └── requirements.txt
+   ```
+
+   **Notes:**
+
+   - The `__init__.py` files allow for easier imports within the package.
+   - The `benchmark_runner.py` script is where you can define and run your experiments.
+
+4. **Set Up Your Data**
+
+   - Place your datasets inside the project's directory.
+   
+   Example with the LFW dataset:
+   ```plaintext
+   face-recognition-benchmarking-tool/
+   ├── models/
+   ├── tasks/
+   ├── facesBenchmarkUtils/
+   ├── tests_datasets/
+   │   ├── LFW
+   │   │   ├── lfw_test_pairs_only_img_names.txt
+   │   │   ├── lfw-align-128
+   │   │   │   ├── Abel_Pacheco
+   │   │   │   │   ├── Abel_Pacheco_0001.jpg
+   │   │   │   │   ├── Abel_Pacheco_0002.jpg
+   │   │   │   │   ├── ...
+   │   │   │   ├── Edward_Kennedy
+   │   │   │   │   ├── Edward_Kennedy_0001.jpg
+   │   │   │   │   ├── ...
+   │   │   │   ├── Mathilda_Karel_Spak
+   │   │   │   │   ├── Mathilda_Karel_Spak_0001.jpg
+   │   │   │   │   ├── ...
+   │   │   │   ├── ...
+   ```
+   - Ensure that the pairs files contain the proper images path.
+
+   Example with the LFW dataset:
+   ```plaintext
+   img1,img2,same
+   Abel_Pacheco/Abel_Pacheco_0001.jpg,Abel_Pacheco/Abel_Pacheco_0004.jpg,1
+   Edward_Kennedy/Edward_Kennedy_0001.jpg,Mathilda_Karel_Spak/Mathilda_Karel_Spak_0001.jpg,0
+   ...
+   ```
+
+### Directory Structure
+
+Here's a brief overview of the main directories:
+
+- **models/**: Contains model implementations extending `BaseModel`.
+  - `vgg16Model.py`
+  - `dinoModel.py`
+  - `clipModel.py`
+- **tasks/**: Contains task implementations extending `BaseTask`.
+  - `accuracyTask.py`
+  - `correlationTask.py`
+  - `conditionedAverageDistances.py`
+  - `relativeDifferenceTask.py`
+- **facesBenchmarkUtils/**: Contains utility classes and the `MultiModelTaskManager`.
+  - `baseModel.py`
+  - `baseTask.py`
+  - `multiModelTaskManager.py`
+- **tests_datasets/**: Contains datasets for testing and experiments, organized by task.
+- **benchmark_runner.py**: Script to define and run your experiments.
 
 ### Usage
 
@@ -611,6 +678,16 @@ Below is an example of how to set up models and tasks, integrate them with the `
 
 ```python
 def main():
+    # Import necessary modules
+    from models.vgg16Model import Vgg16Model
+    from models.clipModel import CLIPModel
+    from models.dinoModel import DinoModel
+    from tasks.accuracyTask import AccuracyTask
+    from tasks.correlationTask import CorrelationTask
+    from facesBenchmarkUtils.multiModelTaskManager import MultiModelTaskManager
+    from datetime import datetime, date
+    import os
+
     # Initialize models
     vgg16_trained = Vgg16Model(
         name='VGG16-trained',
@@ -646,15 +723,15 @@ def main():
     )
 
     # Run all tasks with all models
-    output_path = '/path/to/output'
-    manager.run_all_tasks_all_models(export_path=output_path, print_log=True)
+    output_dir = os.path.join(os.getcwd(), 'results', f'{date.today()}', f"{datetime.now().strftime('%H%M')}")
+    manager.run_all_tasks_all_models(export_path=output_dir, print_log=True)
 
     # Access results
     performances = manager.tasks_performance_dfs
     distances = manager.model_task_distances_dfs
 
     # Export unified summary
-    manager.export_unified_summary(export_path=output_path)
+    manager.export_unified_summary(export_path=output_dir)
 
 if __name__ == '__main__':
     main()
@@ -665,6 +742,7 @@ if __name__ == '__main__':
 - Replace `/path/to/...` with actual paths to your datasets, images, and model weights.
 - Ensure that the pairs files and images directories exist and are correctly formatted.
 - The `batch_cosine_distance` function should be defined or imported as per your implementation.
+- The `output_dir` is organized to include the current date and time for easy tracking of experiments.
 
 #### Example: Implementing Custom Models and Tasks
 
@@ -748,11 +826,6 @@ if __name__ == '__main__':
 
 - Ensure that any custom distance functions or metrics are correctly implemented and validated.
 - Adjust batch sizes and other parameters as needed for your computational resources.
-
-## Acknowledgments
-
-- Thanks to all contributors and the open-source community.
-- Special thanks to the creators of PyTorch and the models utilized.
 
 # Contact
 

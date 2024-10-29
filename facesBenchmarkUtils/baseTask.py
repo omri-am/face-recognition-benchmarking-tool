@@ -1,7 +1,7 @@
 import os
 import torch
 from abc import ABC, abstractmethod
-from typing import Any, Callable
+from typing import Any, Callable, Tuple
 import numpy as np
 import pandas as pd
 from sklearn.metrics import pairwise
@@ -198,11 +198,11 @@ class BaseTask(ABC):
         Exception
             If the pairs file does not contain required columns.
         """
-        self.name: str = name
-        self.pairs_file_path: str = pairs_file_path
-        self.pairs_df: pd.DataFrame = self.__load_file(pairs_file_path)
-        self.images_path: str = self.__validate_path(images_path)
-        self.distance_metric: Callable[[Any, Any], float] = self.__validate_distance_metric(distance_metric)
+        self.name = name
+        self.pairs_file_path = pairs_file_path
+        self.pairs_df = self.__load_file(pairs_file_path)
+        self.images_path = self.__validate_path(images_path)
+        self.distance_metric, self.distance_metric_name = self.__validate_and_set_distance_metric(distance_metric)
 
     def __to_float(self, x: Any) -> float:
         """
@@ -233,10 +233,10 @@ class BaseTask(ABC):
         else:
             return float(x)
 
-    def __validate_distance_metric(
+    def __validate_and_set_distance_metric(
             self, 
             user_func: Callable[[Any, Any], Any]
-            ) -> Callable[[Any, Any], float]:
+            ) -> Tuple[Callable[[Any, Any], float], str]:
         """
         Validates the user-provided distance metric function.
 
@@ -270,7 +270,7 @@ class BaseTask(ABC):
                 "WARNING! The distance function does not return a scalar or an array. "
                 "This could potentially affect computing. Please consider changing the function."
             )
-        return lambda x, y: self.__to_float(user_func(x, y))
+        return lambda x, y: self.__to_float(user_func(x, y)), user_func.__name__
 
     def __validate_path(self, path: str) -> str:
         """

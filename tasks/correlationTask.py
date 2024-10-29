@@ -53,9 +53,8 @@ class CorrelationTask(BaseTask):
             images_path=images_path,
             distance_metric=distance_metric
         )
-        self.correlation_metric: Callable[[Any, Any], np.ndarray] = correlation_metric
-        self.distance_metric_name: str = distance_metric.__name__
-        self.correlation_metric_name: str = correlation_metric.__name__
+        self.correlation_metric = correlation_metric
+        self.correlation_metric_name = correlation_metric.__name__
         if 'distance' not in self.pairs_df.columns:
             raise(Exception('distance column not found in csv!'))
 

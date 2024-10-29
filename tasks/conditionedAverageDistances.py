@@ -8,7 +8,7 @@ class ConditionedAverageDistances(BaseTask):
         pairs_file_path: str,
         images_path: str,
         distance_metric: Callable[[Any, Any], float],
-        condition_column: str = 'condition',
+        condition_column: str,
         normalize: bool = True
     ) -> None:
         """
@@ -25,7 +25,7 @@ class ConditionedAverageDistances(BaseTask):
         distance_metric : callable
             Function to compute the distance between image embeddings.
         condition_column : str
-            Column name in the pairs file distinguishing between the different conditions. Default is 'condition'.
+            Column name in the pairs file distinguishing between the different conditions.
         normialize: bool
             Boolean parameter for normializing the computed distances, by deviding each distance with the max distance computed. Default is True.
         """
@@ -35,9 +35,11 @@ class ConditionedAverageDistances(BaseTask):
             images_path=images_path,
             distance_metric=distance_metric
         )
-        self.distance_metric_name: str = distance_metric.__name__
-        self.normalize: bool = normalize
-        self.pairs_df.rename(columns = {condition_column:'condition'}, inplace=True)
+        self.normalize = normalize
+        if condition_column not in self.pairs_df.columns:
+            raise(Exception(f'{condition_column} column does not exist in the input pairs file!'))
+        else:
+            self.pairs_df.rename(columns = {condition_column:'condition'}, inplace=True)
 
     def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
         """
