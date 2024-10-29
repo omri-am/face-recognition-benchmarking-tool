@@ -37,7 +37,7 @@ class ConditionedAverageDistances(BaseTask):
         )
         self.normalize = normalize
         if condition_column not in self.pairs_df.columns:
-            raise(Exception(f'{condition_column} column does not exist in the input pairs file!'))
+            raise Exception(f'The pairs file must contain a "{condition_column}" column.')
         else:
             self.pairs_df.rename(columns = {condition_column:'condition'}, inplace=True)
 

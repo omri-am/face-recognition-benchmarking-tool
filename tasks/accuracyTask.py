@@ -53,7 +53,7 @@ class AccuracyTask(BaseTask):
             distance_metric=distance_metric
         )
         if true_label not in self.pairs_df.columns:
-            raise(Exception(f'{true_label} column does not exist in the input pairs file!'))
+            raise(Exception(f'The pairs file must contain a "{true_label}" column.'))
         else:
             self.true_label = true_label
 

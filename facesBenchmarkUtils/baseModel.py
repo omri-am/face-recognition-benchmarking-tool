@@ -52,18 +52,18 @@ class BaseModel(ABC):
             Function to preprocess input images. If None, a default preprocessing is used.
         """
         self.set_preprocess_function(preprocess_function)
-        self.hook_outputs: Dict[str, Any] = {}
-        self.name: str = name
+        self.hook_outputs = {}
+        self.name = name
         if isinstance(extract_layers, list):
-            self.extract_layers: List[str] = extract_layers
+            self.extract_layers = extract_layers
         elif extract_layers:
-            self.extract_layers: List[str] = [extract_layers]
+            self.extract_layers = [extract_layers]
         else:
             self.extract_layers = []
-        self.weights_path: Optional[str] = weights_path
-        self.device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.num_identities: Optional[int] = self._set_num_identities() if weights_path else None
-        self.model: Optional[nn.Module] = None
+        self.weights_path = weights_path
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.num_identities = self._set_num_identities() if weights_path else None
+        self.model = None
         self._build_model()
         if weights_path:
             self._load_model()
@@ -71,6 +71,36 @@ class BaseModel(ABC):
         if self.model:
             self.model.eval()
         self._register_hooks()
+
+    @abstractmethod
+    def _build_model(self) -> None:
+        """
+        Abstract method to build the neural network model.
+        Must be implemented by subclasses.
+        """
+        pass
+
+    @abstractmethod
+    def _forward(self, input_tensor: torch.Tensor) -> torch.Tensor:
+        """
+        Abstract method for the forward pass of the model.
+
+        Parameters
+        ----------
+        input_tensor : torch.Tensor
+            The input tensor to the model.
+
+        Returns
+        -------
+        torch.Tensor
+            The output tensor from the model.
+
+        Raises
+        ------
+        NotImplementedError
+            Must be implemented in subclasses.
+        """
+        pass
 
     def _set_num_identities(self) -> int:
         """
@@ -88,14 +118,6 @@ class BaseModel(ABC):
         else:
             last_key = list(checkpoint.keys())[-1]
             return checkpoint[last_key].shape[0]
-
-    @abstractmethod
-    def _build_model(self) -> None:
-        """
-        Abstract method to build the neural network model.
-        Must be implemented by subclasses.
-        """
-        pass
 
     def _load_model(self) -> None:
         """
@@ -180,28 +202,6 @@ class BaseModel(ABC):
             return modules[layer_name]
         else:
             raise ValueError(f"Layer {layer_name} not found in the model.")
-
-    @abstractmethod
-    def _forward(self, input_tensor: torch.Tensor) -> torch.Tensor:
-        """
-        Abstract method for the forward pass of the model.
-
-        Parameters
-        ----------
-        input_tensor : torch.Tensor
-            The input tensor to the model.
-
-        Returns
-        -------
-        torch.Tensor
-            The output tensor from the model.
-
-        Raises
-        ------
-        NotImplementedError
-            Must be implemented in subclasses.
-        """
-        pass
 
     def get_output(self, input_tensor: torch.Tensor) -> Dict[str, torch.Tensor]:
         """

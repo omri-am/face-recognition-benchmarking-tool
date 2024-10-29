@@ -50,8 +50,8 @@ class RelativeDifferenceTask(BaseTask):
             images_path=images_path,
             distance_metric=distance_metric
         )
-        if group_column not in self.pairs_df.columns:
-            raise(Exception(f'{group_column} column does not exist in the input pairs file!'))
+        if self.group_column not in self.pairs_df.columns:
+            raise Exception(f'The pairs file must contain a "{self.group_column}" column.')
         else:
             self.group_column: str = group_column
 

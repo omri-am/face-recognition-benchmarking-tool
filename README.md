@@ -21,9 +21,8 @@ Welcome to the **Face Recognition Benchmarking Tool**! This project is designed 
   - [Usage](#usage)
     - [Example: Running Experiments](#example-running-experiments)
     - [Example: Implementing Custom Models and Tasks](#example-implementing-custom-models-and-tasks)
-- [Contributing](#contributing)
-- [License](#license)
-- [Acknowledgments](#acknowledgments)
+    - [Example: Using LLM Propmpts to Implement Models and Tasks](#example-useful-llm-propts-for-implementation)
+- [Contact](#contact)
 
 ## Introduction
 
@@ -213,7 +212,7 @@ class BaseTask(ABC):
         self.pairs_file_path = pairs_file_path
         self.pairs_df = self.__load_file(pairs_file_path)
         self.images_path = self.__validate_path(images_path)
-        self.distance_metric = self.__validate_distance_metric(distance_metric)
+        self.distance_metric, self.distance_metric_name = self.__validate_and_set_distance_metric(distance_metric)
 
     @abstractmethod
     def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
@@ -237,6 +236,14 @@ The following tasks have been implemented by extending `BaseTask`:
 
 Computes the accuracy of the model by comparing the predicted similarities against true labels.
 
+**Requirements:**
+
+- **Pairs File Columns**:
+  - `'img1'`, `'img2'`: Image filenames.
+  - **Truth Label Column**: By default `'truth'`, but can be specified using the `true_label` parameter.
+- **Parameters**:
+  - `true_label`: The name of the column in the pairs file that contains the ground truth labels (e.g., `'same'`, `'match'`).
+
 ```python
 class AccuracyTask(BaseTask):
     def __init__(
@@ -254,7 +261,6 @@ class AccuracyTask(BaseTask):
             distance_metric=distance_metric
         )
         self.true_label = true_label
-        self.distance_metric_name = distance_metric.__name__
 
     def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
         pairs_distances_df['similarity'] = 1 - pairs_distances_df['model_computed_distance']
@@ -294,6 +300,14 @@ class AccuracyTask(BaseTask):
 
 Computes the correlation between the model-computed distances and given distances.
 
+**Requirements:**
+
+- **Pairs File Columns**:
+  - `'img1'`, `'img2'`: Image filenames.
+  - `'distance'`: The ground truth distances between image pairs.
+- **Parameters**:
+  - `correlation_metric`: A callable to compute the correlation (e.g., `np.corrcoef`, `spearmanr`).
+
 ```python
 class CorrelationTask(BaseTask):
     def __init__(
@@ -302,7 +316,7 @@ class CorrelationTask(BaseTask):
         pairs_file_path: str,
         images_path: str,
         distance_metric: Callable[[Any, Any], float],
-        correlation_metric: Callable[[Any, Any], np.ndarray] = np.corrcoef
+        correlation_metric: Callable[[Any, Any], Any] = np.corrcoef
     ) -> None:
         super().__init__(
             name=name,
@@ -311,10 +325,9 @@ class CorrelationTask(BaseTask):
             distance_metric=distance_metric
         )
         self.correlation_metric = correlation_metric
-        self.distance_metric_name = distance_metric.__name__
         self.correlation_metric_name = correlation_metric.__name__
         if 'distance' not in self.pairs_df.columns:
-            raise Exception('distance column not found in csv!')
+            raise Exception('The pairs file must contain a "distance" column.')
 
     def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
         computed_distances = pairs_distances_df['model_computed_distance'].values
@@ -363,6 +376,15 @@ class CorrelationTask(BaseTask):
 
 Computes the average distances for different conditions specified in the pairs file.
 
+**Requirements:**
+
+- **Pairs File Columns**:
+  - `'img1'`, `'img2'`: Image filenames.
+  - **Condition Column**: By default `'condition'`, but can be specified using the `condition_column` parameter.
+- **Parameters**:
+  - `condition_column`: The name of the column that specifies the condition for each pair.
+  - `normalize`: Whether to normalize the distances (default is `True`).
+
 ```python
 class ConditionedAverageDistances(BaseTask):
     def __init__(
@@ -380,8 +402,9 @@ class ConditionedAverageDistances(BaseTask):
             images_path=images_path,
             distance_metric=distance_metric
         )
-        self.distance_metric_name = distance_metric.__name__
         self.normalize = normalize
+        if condition_column not in self.pairs_df.columns:
+            raise Exception(f'The pairs file must contain a "{condition_column}" column.')
         self.pairs_df.rename(columns={condition_column: 'condition'}, inplace=True)
 
     def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
@@ -419,6 +442,14 @@ class ConditionedAverageDistances(BaseTask):
 
 Calculates the relative difference between two groups, useful for tasks like evaluating the Thatcher effect.
 
+**Requirements:**
+
+- **Pairs File Columns**:
+  - `'img1'`, `'img2'`: Image filenames.
+  - **Group Column**: Specified using the `group_column` parameter. This column must have exactly two unique values.
+- **Parameters**:
+  - `group_column`: The name of the column that specifies the group for each pair.
+
 ```python
 class RelativeDifferenceTask(BaseTask):
     def __init__(
@@ -436,7 +467,8 @@ class RelativeDifferenceTask(BaseTask):
             distance_metric=distance_metric
         )
         self.group_column = group_column
-        self.distance_metric_name = distance_metric.__name__
+        if self.group_column not in self.pairs_df.columns:
+            raise Exception(f'The pairs file must contain a "{self.group_column}" column.')
 
     def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
         unique_groups = pairs_distances_df[self.group_column].unique()
@@ -519,6 +551,7 @@ class CustomTask(BaseTask):
 
 - The `compute_task_performance` method should contain the main logic of your task and return a DataFrame with the computed metrics.
 - The `plot` method should handle the visualization of results.
+- Ensure that your pairs file contains all the necessary columns required by your custom task.
 
 ### MultiModelTaskManager
 
@@ -685,7 +718,6 @@ def main():
     from tasks.accuracyTask import AccuracyTask
     from tasks.correlationTask import CorrelationTask
     from facesBenchmarkUtils.multiModelTaskManager import MultiModelTaskManager
-    from datetime import datetime, date
     import os
 
     # Initialize models
@@ -723,7 +755,8 @@ def main():
     )
 
     # Run all tasks with all models
-    output_dir = os.path.join(os.getcwd(), 'results', f'{date.today()}', f"{datetime.now().strftime('%H%M')}")
+    export_path = 'path/to/export/results/
+    output_dir = os.path.join(os.getcwd(), export_path)
     manager.run_all_tasks_all_models(export_path=output_dir, print_log=True)
 
     # Access results
@@ -742,7 +775,6 @@ if __name__ == '__main__':
 - Replace `/path/to/...` with actual paths to your datasets, images, and model weights.
 - Ensure that the pairs files and images directories exist and are correctly formatted.
 - The `batch_cosine_distance` function should be defined or imported as per your implementation.
-- The `output_dir` is organized to include the current date and time for easy tracking of experiments.
 
 #### Example: Implementing Custom Models and Tasks
 
@@ -826,6 +858,211 @@ if __name__ == '__main__':
 
 - Ensure that any custom distance functions or metrics are correctly implemented and validated.
 - Adjust batch sizes and other parameters as needed for your computational resources.
+
+#### Example: Useful LLM Propts For Implementation
+
+#### Generating a New Model
+
+**Prompt:** 
+
+> I am working with a Python project called the Face Recognition Benchmarking Tool, which uses a BaseModel abstract class to define models. Here's the structure of BaseModel:
+> ```python
+> baseModel python code...
+> ```
+> I want to implement a new model called ResNetModel that extends BaseModel and uses a pre-trained ResNet50 architecture from torchvision.models. The model should:
+> 
+> Use the pre-trained weights.
+> Implement the class' abstract methods.
+> Implement custom preprocessing if necessary.
+> Can you provide the Python code for the ResNetModel class, following the structure of BaseModel and ensuring it integrates smoothly with the existing code?
+
+<details>
+  <summary>ChatGPT Example Result</summary>
+
+  ```python
+  import torch
+  import torch.nn as nn
+  from torchvision import models, transforms
+  from typing import Optional, List, Union, Callable, Any, Dict
+  from PIL import Image
+
+  class ResNetModel(BaseModel):
+      def __init__(self, name: str, weights_path: Optional[str] = None,
+                  extract_layers: Union[str, List[str]] = 'layer4',
+                  preprocess_function: Optional[Callable[[Any], Any]] = None) -> None:
+          super().__init__(name=name, weights_path=weights_path, extract_layers=extract_layers, preprocess_function=preprocess_function)
+
+      def _build_model(self) -> None:
+          model = models.resnet50(weights=models.ResNet50_Weights.DEFAULT if self.weights_path is None else None)
+
+          # If the number of identities is set, modify the last layer
+          if self.num_identities is not None:
+              num_features = model.fc.in_features
+              model.fc = nn.Linear(num_features, self.num_identities)
+          else:
+              self.num_identities = model.fc.out_features
+          
+          self.model = model
+
+      def _forward(self, input_tensor: torch.Tensor) -> torch.Tensor:
+          if input_tensor.ndim == 3:
+              input_tensor = input_tensor.unsqueeze(0)  # Add batch dimension if necessary
+          return self.model(input_tensor)
+
+      def preprocess_image(self, image_path: str) -> torch.Tensor:
+          """
+          Preprocess an image given its file path.
+          
+          Parameters
+          ----------
+          image_path : str
+              Path to the input image.
+          
+          Returns
+          -------
+          torch.Tensor
+              Preprocessed image tensor.
+          """
+          image = Image.open(image_path).convert('RGB')
+          return self.preprocess(image)
+  ```
+</details>
+
+#### Generating a New Task
+**Prompt:** 
+
+> I am using the Face Recognition Benchmarking Tool, which has a BaseTask abstract class for defining tasks. Here is its structure:
+> ```python
+> baseTask python code...
+> ```
+> I want to implement a new task called MeanSquaredErrorTask that calculates the mean squared error (MSE) between the model-computed distances and true distances provided in the pairs file. The pairs file contains columns 'img1', 'img2', and 'true_distance'.  The task should: Compute the MSE between the model distances and 'true_distance'. Return a DataFrame with the MSE and model information. Provide a plotting function to visualize the error distribution. 
+> 
+> Can you provide the Python code for the MeanSquaredErrorTask class, ensuring it properly extends BaseTask and integrates with the existing code?
+
+<details>
+  <summary>ChatGPT Example Result</summary>
+
+  ```python
+  import pandas as pd
+  import numpy as np
+  import matplotlib.pyplot as plt
+  import seaborn as sns
+  from sklearn.metrics import mean_squared_error
+
+  class MeanSquaredErrorTask(BaseTask):
+      def __init__(self, name: str, pairs_file_path: str, images_path: str) -> None:
+          super().__init__(name=name, pairs_file_path=pairs_file_path, images_path=images_path)
+
+      def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
+          """
+          Computes the Mean Squared Error (MSE) between the model-computed distances and true distances.
+
+          Parameters
+          ----------
+          pairs_distances_df : pandas.DataFrame
+              DataFrame containing the computed distances for image pairs.
+
+          Returns
+          -------
+          pd.DataFrame
+              The performance metrics DataFrame with MSE and model information.
+          """
+          # Merge computed distances with the true distances from pairs_df
+          merged_df = self.pairs_df.merge(pairs_distances_df, on=['img1', 'img2'], how='left')
+
+          # Calculate MSE
+          mse = mean_squared_error(merged_df['true_distance'], merged_df['model_computed_distance'], squared=True)
+          
+          # Create a DataFrame to return
+          performance_df = pd.DataFrame({
+              'Model Name': [self.name],
+              'Mean Squared Error': [mse]
+          })
+
+          return performance_df
+
+      def plot(self, output_dir: str, performances: pd.DataFrame, *optional: Any) -> None:
+          """
+          Visualizes the distribution of errors using a histogram.
+
+          Parameters
+          ----------
+          output_dir : str
+              Directory to save the plots.
+          performances : pd.DataFrame
+              DataFrame containing performance metrics.
+          optional : Any
+              Additional parameters for customization if needed.
+          """
+          # Extracting model errors for plotting
+          errors = performances['Mean Squared Error'].values
+          
+          plt.figure(figsize=(10, 6))
+          sns.histplot(errors, bins=20, kde=True)
+          plt.title(f'Error Distribution for {self.name}', fontsize=SUPTITLE_SIZE)
+          plt.xlabel('Mean Squared Error', fontsize=SUBTITLE_SIZE)
+          plt.ylabel('Frequency', fontsize=SUBTITLE_SIZE)
+          
+          # Save the plot
+          plt.tight_layout()
+          plt.savefig(os.path.join(output_dir, f'{self.name}_error_distribution.png'))
+          plt.close()
+  ```
+</details>
+
+#### Generating a Custom Plot Function
+**Prompt:**
+> I am creating a subclass of a class that has an abstract static plot method with the following signature: 
+> ```python
+> @staticmethod
+> def plot(output_dir, performances, *optional)
+> ```
+> I want to create a plotting function that generates a histogram of computed distances. The dataframe that are available to me are performances, which contains a final computed metric, and distances, which contains for each pair of images their computed distance. Can you help me modify the plot method in CustomTask to include this functionality? 
+
+<details>
+  <summary>ChatGPT Example Result</summary>
+
+  ```python
+  import matplotlib.pyplot as plt
+  import pandas as pd
+
+  class CustomTask(YourBaseClass):  # Replace YourBaseClass with the actual base class name
+      @staticmethod
+      def plot(output_dir, performances, distances, *optional):
+          """
+          Generate a histogram of computed distances.
+
+          Args:
+              output_dir (str): Directory to save the plot.
+              performances (pd.DataFrame): Summary data.
+              distances (pd.DataFrame): DataFrame containing computed distances for each pair of images.
+              *optional: Additional optional parameters.
+          """
+          # Ensure distances DataFrame has the expected structure
+          if distances.empty:
+              print("No distance data available to plot.")
+              return
+
+          # Extract distance values
+          distance_values = distances.values.flatten()  # Flatten if it's a 2D array
+
+          # Create the histogram
+          plt.figure(figsize=(10, 6))
+          plt.hist(distance_values, bins=30, alpha=0.7, color='blue', edgecolor='black')
+          plt.title('Histogram of Computed Distances')
+          plt.xlabel('Distance')
+          plt.ylabel('Frequency')
+          
+          # Save the plot
+          plt.savefig(f"{output_dir}/histogram_of_distances.png")
+          plt.close()
+
+          print(f"Histogram saved to {output_dir}/histogram_of_distances.png")
+
+  # Example usage:
+  # CustomTask.plot('output_directory', performances_dataframe, distances_dataframe)
+  ```
+</details>
 
 # Contact
 

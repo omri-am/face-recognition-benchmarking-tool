@@ -204,6 +204,48 @@ class BaseTask(ABC):
         self.images_path = self.__validate_path(images_path)
         self.distance_metric, self.distance_metric_name = self.__validate_and_set_distance_metric(distance_metric)
 
+    @abstractmethod
+    def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Abstract method to compute the task performance metrics.
+
+        Parameters
+        ----------
+        pairs_distances_df : pandas.DataFrame
+            DataFrame containing the computed distances for image pairs.
+
+        Returns
+        -------
+        pd.DataFrame
+            The performance metrics DataFrame for the task.
+
+        Raises
+        ------
+        NotImplementedError
+            Must be implemented in subclasses.
+        """
+        pass
+
+    @abstractmethod
+    def plot(self,
+        output_dir: str,
+        performances: pd.DataFrame,
+        *optional: Any):
+        """
+        Abstract and static method to plot task's performance results.
+        Can be implemented using PlotHelper class or using the different plotting packages.
+
+        Parameters
+        ----------
+        output_dir : str
+            Path to save the resulted plots.
+        performances : pandas.DataFrame
+            DataFrame containing the computed metrics for all the taks of the same type.
+        *optional : Any
+            Any other parameter you might need to create the plot.
+        """
+        pass
+
     def __to_float(self, x: Any) -> float:
         """
         Converts input to a float value. Supports torch.Tensor, numpy.ndarray, and scalars.
@@ -324,35 +366,3 @@ class BaseTask(ABC):
             return pairs_pd
         except Exception as e:
             raise e
-
-    @abstractmethod
-    def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Abstract method to compute the task performance metrics.
-
-        Parameters
-        ----------
-        pairs_distances_df : pandas.DataFrame
-            DataFrame containing the computed distances for image pairs.
-
-        Returns
-        -------
-        pd.DataFrame
-            The performance metrics DataFrame for the task.
-
-        Raises
-        ------
-        NotImplementedError
-            Must be implemented in subclasses.
-        """
-        pass
-
-    @abstractmethod
-    def plot(self,
-        output_dir: str,
-        performances: pd.DataFrame,
-        *optional: Any):
-        """
-        --- domunetation here ---
-        """
-        pass

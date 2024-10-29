@@ -56,7 +56,7 @@ class CorrelationTask(BaseTask):
         self.correlation_metric = correlation_metric
         self.correlation_metric_name = correlation_metric.__name__
         if 'distance' not in self.pairs_df.columns:
-            raise(Exception('distance column not found in csv!'))
+            raise Exception('The pairs file must contain a "distance" column.')
 
     def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
         """
