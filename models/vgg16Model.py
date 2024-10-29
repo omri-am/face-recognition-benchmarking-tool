@@ -3,8 +3,60 @@ from torchvision import models
 import torch.nn as nn
 
 class Vgg16Model(BaseModel):
-    def __init__(self, name, weights_path=None, extract_layers='classifier.3', preprocess_function=None):
-        super().__init__(name=name, weights_path=weights_path, extract_layers=extract_layers, preprocess_function=preprocess_function)
+    """
+    A VGG16 model implementation for face recognition tasks.
+
+    This class initializes a VGG16 model, optionally loading pre-trained weights.
+    It allows extraction of specific layers and provides methods for preprocessing
+    images and forwarding inputs through the model.
+
+    Attributes
+    ----------
+    name : str
+        The name of the model.
+    weights_path : str or None
+        Path to the model's weights file (.pth extention). If None, default pre-trained weights are used.
+    extract_layers : str or list of str
+        Layer(s) from which to extract outputs.
+    preprocess_function : callable or None
+        Function to preprocess input images.
+    num_identities : int or None
+        Number of identities (classes) in the model, set if weights are loaded.
+    model : torch.nn.Module
+        The VGG16 neural network model.
+    device : torch.device
+        The device (CPU or GPU) on which the model is placed.
+    hook_outputs : dict
+        Dictionary to store outputs from hooked layers.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        weights_path: Optional[str] = None,
+        extract_layers: Optional[Union[str, List[str]]] = 'classifier.3',
+        preprocess_function: Optional[Callable[[Any], Any]] = None
+    ):
+        """
+        Initializes the Vgg16Model.
+
+        Parameters
+        ----------
+        name : str
+            The name of the model.
+        weights_path : str or None, optional
+            Path to the model's weights file. If None, default pre-trained weights are used.
+        extract_layers : str or list of str, optional
+            Layer(s) from which to extract outputs. Defaults to 'classifier.3'.
+        preprocess_function : callable or None, optional
+            Function to preprocess input images. If None, no additional preprocessing is applied.
+        """
+        super().__init__(
+            name=name,
+            weights_path=weights_path,
+            extract_layers=extract_layers,
+            preprocess_function=preprocess_function
+        )
 
     def _build_model(self):
         model = models.vgg16(weights=models.VGG16_Weights.DEFAULT if self.weights_path is None else None)

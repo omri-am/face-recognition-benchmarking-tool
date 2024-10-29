@@ -239,22 +239,22 @@ def main():
             # vit16
             ],
         tasks = [
-            # lfw_acc,
+            lfw_acc,
             upright_acc, 
-            # inverted_acc, 
-            # same_diff_visual_int_task,
-            # same_diff_memory_int_task,
-            # same_diff_DP_int_task,
-            # same_diff_SP_int_task,
-            # familiar_il_task,
-            # unfamiliar_il_task,
-            # other_race_caucasian, 
-            # other_race_asian,
-            # thatcher_task,
+            inverted_acc, 
+            same_diff_visual_int_task,
+            same_diff_memory_int_task,
+            same_diff_DP_int_task,
+            same_diff_SP_int_task,
+            familiar_il_task,
+            unfamiliar_il_task,
+            other_race_caucasian, 
+            other_race_asian,
+            thatcher_task,
             critical_features_conditioned,
-            # critical_features_conditioned_normalized,
-            # critical_features_critical_dis,
-            # critical_features_noncritical_dis
+            critical_features_conditioned_normalized,
+            critical_features_critical_dis,
+            critical_features_noncritical_dis
             ])
     
     multimodel_manager2 = MultiModelTaskManager(
@@ -269,22 +269,22 @@ def main():
             # vit16
             ],
         tasks = [
-            # lfw_acc,
-            # upright_acc, 
-            # inverted_acc, 
-            # same_diff_visual_int_task,
-            # same_diff_memory_int_task,
-            # same_diff_DP_int_task,
-            # same_diff_SP_int_task,
-            # familiar_il_task,
-            # unfamiliar_il_task,
-            # other_race_caucasian, 
-            # other_race_asian,
-            # thatcher_task,
+            lfw_acc,
+            upright_acc, 
+            inverted_acc, 
+            same_diff_visual_int_task,
+            same_diff_memory_int_task,
+            same_diff_DP_int_task,
+            same_diff_SP_int_task,
+            familiar_il_task,
+            unfamiliar_il_task,
+            other_race_caucasian, 
+            other_race_asian,
+            thatcher_task,
             critical_features_conditioned,
-            # critical_features_conditioned_normalized,
-            # critical_features_critical_dis,
-            # critical_features_noncritical_dis
+            critical_features_conditioned_normalized,
+            critical_features_critical_dis,
+            critical_features_noncritical_dis
             ])
 
     path = os.path.join(os.getcwd(),'results',f'{date.today()}',f"{datetime.now().strftime('%H%M')}")

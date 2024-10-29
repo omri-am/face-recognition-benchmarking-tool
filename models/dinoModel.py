@@ -21,7 +21,43 @@ pipinstall(tqdm_command)
 from transformers import AutoImageProcessor, Dinov2Model
 
 class DinoModel(BaseModel):
-    def __init__(self, name: str, version='facebook/dinov2-base'):
+    """
+    A DINO model implementation for face recognition tasks.
+
+    This class initializes a DINO model using the specified version, handles image
+    preprocessing, and provides methods for forwarding inputs through the model.
+
+    Attributes
+    ----------
+    name : str
+        The name of the model.
+    version : str
+        The version identifier for the DINO model.
+    model : torch.nn.Module
+        The DINO neural network model.
+    processor : transformers.AutoImageProcessor
+        The image processor for preparing inputs.
+    device : torch.device
+        The device (CPU or GPU) on which the model is placed.
+    hook_outputs : dict
+        Dictionary to store outputs from hooked layers.
+    """
+
+    def __init__(
+        self, 
+        name: str, 
+        version: str = 'facebook/dinov2-base'
+    ):
+        """
+        Initializes the DinoModel.
+
+        Parameters
+        ----------
+        name : str
+            The name of the model.
+        version : str, optional
+            The version identifier for the DINO model. Defaults to 'facebook/dinov2-base'.
+        """
         self.version = version
         super().__init__(name=name)
 

@@ -22,6 +22,12 @@ Welcome to the **Face Recognition Benchmarking Tool**! This project is designed 
     - [Example: Running Experiments](#example-running-experiments)
     - [Example: Implementing Custom Models and Tasks](#example-implementing-custom-models-and-tasks)
     - [Example: Using LLM Propmpts to Implement Models and Tasks](#example-useful-llm-propts-for-implementation)
+  - [Exported Results](#exported-results)
+    - [CSV Files](#csv-files)
+    - [Plots](#plots)
+    - [Output Directory Structure](#output-directory-structure)
+    - [Accessing and Interpreting Results](#accessing-and-interpreting-results)
+    - [Customization](#customization)
 - [Contact](#contact)
 
 ## Introduction
@@ -166,58 +172,6 @@ Computes the accuracy of the model by comparing the predicted similarities again
 - **Parameters**:
   - `true_label`: The name of the column in the pairs file that contains the ground truth labels (e.g., `'same'`, `'match'`).
 
-```python
-class AccuracyTask(BaseTask):
-    def __init__(
-        self,
-        name: str,
-        pairs_file_path: str,
-        images_path: str,
-        distance_metric: Callable[[Any, Any], float],
-        true_label: str = 'truth'
-    ) -> None:
-        super().__init__(
-            name=name,
-            pairs_file_path=pairs_file_path,
-            images_path=images_path,
-            distance_metric=distance_metric
-        )
-        self.true_label = true_label
-
-    def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
-        pairs_distances_df['similarity'] = 1 - pairs_distances_df['model_computed_distance']
-        y_true = self.pairs_df[self.true_label].values
-        y_scores = pairs_distances_df['similarity'].values
-
-        auc = roc_auc_score(y_true, y_scores)
-
-        fpr, tpr, thresholds = roc_curve(y_true, y_scores)
-        optimal_idx = np.argmax(tpr - fpr)
-        optimal_threshold = thresholds[optimal_idx]
-
-        y_pred = (y_scores > optimal_threshold).astype(int)
-        accuracy = accuracy_score(y_true, y_pred)
-
-        return pd.DataFrame({
-            'Accuracy': [round(accuracy, 5)],
-            'Optimal Threshold': [round(optimal_threshold, 5)],
-            'AUC': [round(auc, 5)],
-            'Distance Metric': [self.distance_metric_name]
-        })
-
-    @staticmethod
-    def plot(output_dir: str, performances: pd.DataFrame, *optional: Any) -> None:
-        PlotHelper.bar_plot(
-            performances=performances,
-            y='Accuracy',
-            ylabel='Accuracy',
-            ylim=(0, 1.1),
-            title_prefix='Accuracy Score Comparison',
-            output_dir=output_dir,
-            file_name='accuracy_comparison'
-        )
-```
-
 ##### CorrelationTask
 
 Computes the correlation between the model-computed distances and given distances.
@@ -229,70 +183,6 @@ Computes the correlation between the model-computed distances and given distance
   - `'distance'`: The ground truth distances between image pairs.
 - **Parameters**:
   - `correlation_metric`: A callable to compute the correlation (e.g., `np.corrcoef`, `spearmanr`).
-
-```python
-class CorrelationTask(BaseTask):
-    def __init__(
-        self,
-        name: str,
-        pairs_file_path: str,
-        images_path: str,
-        distance_metric: Callable[[Any, Any], float],
-        correlation_metric: Callable[[Any, Any], Any] = np.corrcoef
-    ) -> None:
-        super().__init__(
-            name=name,
-            pairs_file_path=pairs_file_path,
-            images_path=images_path,
-            distance_metric=distance_metric
-        )
-        self.correlation_metric = correlation_metric
-        self.correlation_metric_name = correlation_metric.__name__
-        if 'distance' not in self.pairs_df.columns:
-            raise Exception('The pairs file must contain a "distance" column.')
-
-    def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
-        computed_distances = pairs_distances_df['model_computed_distance'].values
-        true_distances = self.pairs_df['distance'].values
-
-        correlation_result = self.correlation_metric(computed_distances, true_distances)
-
-        if isinstance(correlation_result, np.ndarray):
-            correlation = correlation_result[0, 1]
-        elif isinstance(correlation_result, tuple):
-            correlation = correlation_result[0]
-        else:
-            correlation = correlation_result
-
-        return pd.DataFrame({
-            'Correlation Score': [round(correlation, 5)],
-            'Distance Metric': [self.distance_metric_name],
-            'Correlation Metric': [self.correlation_metric_name]
-        })
-
-    @staticmethod
-    def plot(
-        output_dir: str,
-        performances: pd.DataFrame,
-        distances: Dict[str, Dict[str, pd.DataFrame]],
-        *optional: Any
-    ) -> None:
-        PlotHelper.scatter_plot(
-            performances=performances,
-            distances=distances,
-            output_dir=output_dir,
-            file_name='scatters_comparison'
-        )
-        PlotHelper.bar_plot(
-            performances=performances,
-            y='Correlation Score',
-            ylabel='Correlation Coefficient (r)',
-            ylim=(0, 1.1),
-            title_prefix='Correlation Coefficient Comparison',
-            output_dir=output_dir,
-            file_name='correlation_comparison'
-        )
-```
 
 ##### ConditionedAverageDistances
 
@@ -307,59 +197,6 @@ Computes the average distances for different conditions specified in the pairs f
   - `condition_column`: The name of the column that specifies the condition for each pair.
   - `normalize`: Whether to normalize the distances (default is `True`).
 
-```python
-class ConditionedAverageDistances(BaseTask):
-    def __init__(
-        self,
-        name: str,
-        pairs_file_path: str,
-        images_path: str,
-        distance_metric: Callable[[Any, Any], float],
-        condition_column: str = 'condition',
-        normalize: bool = True
-    ) -> None:
-        super().__init__(
-            name=name,
-            pairs_file_path=pairs_file_path,
-            images_path=images_path,
-            distance_metric=distance_metric
-        )
-        self.normalize = normalize
-        if condition_column not in self.pairs_df.columns:
-            raise Exception(f'The pairs file must contain a "{condition_column}" column.')
-        self.pairs_df.rename(columns={condition_column: 'condition'}, inplace=True)
-
-    def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
-        if self.normalize:
-            max_distance = pairs_distances_df['model_computed_distance'].max()
-            if max_distance != 0:
-                pairs_distances_df['normalized_distance'] = pairs_distances_df['model_computed_distance'] / max_distance
-        else:
-            pairs_distances_df['normalized_distance'] = pairs_distances_df['model_computed_distance']
-
-        avg_distances = pairs_distances_df.groupby(['condition'])['normalized_distance'].mean().reset_index()
-        avg_distances.rename(columns={'normalized_distance': 'Mean Value', 'condition': 'Condition'}, inplace=True)
-        avg_distances['Distance Metric'] = self.distance_metric_name
-
-        return avg_distances
-
-    @staticmethod
-    def plot(
-        output_dir: str,
-        performances: pd.DataFrame,
-        *optional: Any
-    ) -> None:
-        for condition, condition_df in performances.groupby('Condition'):
-            PlotHelper.bar_plot(
-                performances=condition_df,
-                y='Mean Value',
-                ylabel='Average Distance',
-                title_prefix=f'Average Distance Comparison - {condition}',
-                output_dir=output_dir,
-                file_name=f'average_distance_comparison_{condition}'
-            )
-```
-
 ##### RelativeDifferenceTask
 
 Calculates the relative difference between two groups, useful for tasks like evaluating the Thatcher effect.
@@ -372,108 +209,54 @@ Calculates the relative difference between two groups, useful for tasks like eva
 - **Parameters**:
   - `group_column`: The name of the column that specifies the group for each pair.
 
-```python
-class RelativeDifferenceTask(BaseTask):
-    def __init__(
-        self,
-        name: str,
-        pairs_file_path: str,
-        images_path: str,
-        distance_metric: Callable[[Any, Any], float],
-        group_column: str
-    ) -> None:
-        super().__init__(
-            name=name,
-            pairs_file_path=pairs_file_path,
-            images_path=images_path,
-            distance_metric=distance_metric
-        )
-        self.group_column = group_column
-        if self.group_column not in self.pairs_df.columns:
-            raise Exception(f'The pairs file must contain a "{self.group_column}" column.')
-
-    def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
-        unique_groups = pairs_distances_df[self.group_column].unique()
-        if len(unique_groups) != 2:
-            raise ValueError(
-                f"The group column '{self.group_column}' must have exactly two unique values."
-            )
-
-        group1 = pairs_distances_df[pairs_distances_df[self.group_column] == unique_groups[0]]
-        group2 = pairs_distances_df[pairs_distances_df[self.group_column] == unique_groups[1]]
-
-        group1_mean = group1['model_computed_distance'].mean()
-        group2_mean = group2['model_computed_distance'].mean()
-
-        relative_difference = (group1_mean - group2_mean) / (group1_mean + group2_mean)
-
-        return pd.DataFrame({
-            f'{unique_groups[0]} Mean': [group1_mean],
-            f'{unique_groups[1]} Mean': [group2_mean],
-            'Relative Difference': [round(relative_difference, 5)],
-            'Distance Metric': [self.distance_metric_name]
-        })
-
-    @staticmethod
-    def plot(
-        output_dir: str,
-        performances: pd.DataFrame,
-        *optional: Any
-    ) -> None:
-        PlotHelper.bar_plot(
-            performances=performances,
-            y='Relative Difference',
-            ylabel='Relative Difference',
-            title_prefix='Relative Difference Comparison',
-            output_dir=output_dir,
-            file_name='relative_difference_comparison'
-        )
-```
-
 #### Extending BaseTask
 
 To create a new task, you need to subclass `BaseTask` and implement the required abstract methods.
+Altough this is an open-source project, it is highly recommended to use the already implemented tasks. You can always [contact](#contact) us for further requests and questions.
 
-##### Example: Implementing a Custom Task
+<details>
+  <summary>##### Example: Implementing a Custom Task</summary>
 
-```python
-class CustomTask(BaseTask):
-    def __init__(
-        self,
-        name: str,
-        pairs_file_path: str,
-        images_path: str,
-        distance_metric: Callable[[Any, Any], float],
-        **kwargs
-    ) -> None:
-        super().__init__(
-            name=name,
-            pairs_file_path=pairs_file_path,
-            images_path=images_path,
-            distance_metric=distance_metric
-        )
-        # Initialize any additional attributes here
+  ```python
+  class CustomTask(BaseTask):
+      def __init__(
+          self,
+          name: str,
+          pairs_file_path: str,
+          images_path: str,
+          distance_metric: Callable[[Any, Any], float],
+          **kwargs
+      ) -> None:
+          super().__init__(
+              name=name,
+              pairs_file_path=pairs_file_path,
+              images_path=images_path,
+              distance_metric=distance_metric
+          )
+          # Initialize any additional attributes here
 
-    def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
-        # Implement the computation logic using pairs_distances_df
-        # Return a DataFrame with performance metrics
-        pass
+      def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
+          # Implement the computation logic using pairs_distances_df
+          # Return a DataFrame with performance metrics
+          pass
 
-    @staticmethod
-    def plot(
-        output_dir: str,
-        performances: pd.DataFrame,
-        *optional: Any
-    ) -> None:
-        # Implement plotting logic
-        pass
-```
+      @staticmethod
+      def plot(
+          output_dir: str,
+          performances: pd.DataFrame,
+          *optional: Any
+      ) -> None:
+          # Implement plotting logic
+          pass
+  ```
 
-**Notes:**
+  **Notes:**
 
-- The `compute_task_performance` method should contain the main logic of your task and return a DataFrame with the computed metrics.
-- The `plot` method should handle the visualization of results.
-- Ensure that your pairs file contains all the necessary columns required by your custom task.
+  - The `compute_task_performance` method should contain the main logic of your task and return a DataFrame with the computed metrics.
+  - The `plot` method should handle the visualization of results.
+  - Ensure that your pairs file contains all the necessary columns required by your custom task.
+
+</details>
 
 ### MultiModelTaskManager
 
@@ -783,6 +566,230 @@ if __name__ == '__main__':
 
 #### Example: Useful LLM Propts For Implementation
 
+### Running the MultiModelTaskManager on Given Tasks and Models
+
+**Prompt:**
+
+> I am working on a Python project called the Face Recognition Benchmarking Tool, which allows me to run multiple neural network (NN) models on different tasks easily. All the needed files are in the same folder as my python file. I need assistance in creating a Python script (run_benchmark.py) that:
+>
+> Imports all necessary classes and modules.
+> Initializes the models (Vgg16Model, DinoModel, CLIPModel) with appropriate parameters, including loading weights if provided.
+> Initializes the AccuracyTask (and any other tasks) with the provided image paths and distance metrics.
+> Creates an instance of MultiModelTaskManager, adding all models and tasks to it.
+> Runs all tasks on all models using the manager.
+> Exports the computed metrics to specified paths.
+> File Paths:
+
+> Image path: 'path/to/img/folder'
+> Pairs file path: 'path/to/pair_file.csv'
+> Weights path: 'path/to/weights_file.pth'
+> Classes with Docstrings:
+<details>
+  <summary>docstrings and class signature for the desired models, tasks and MultiModelTaskManager</summary>
+  
+  ```python
+  class Vgg16Model(BaseModel):
+      """
+      A VGG16 model implementation for face recognition tasks.
+
+      This class initializes a VGG16 model, optionally loading pre-trained weights.
+      It allows extraction of specific layers and provides methods for preprocessing
+      images and forwarding inputs through the model.
+
+      Attributes
+      ----------
+      name : str
+          The name of the model.
+      weights_path : str or None
+          Path to the model's weights file (.pth extention). If None, default pre-trained weights are used.
+      extract_layers : str or list of str
+          Layer(s) from which to extract outputs.
+      preprocess_function : callable or None
+          Function to preprocess input images.
+      num_identities : int or None
+          Number of identities (classes) in the model, set if weights are loaded.
+      model : torch.nn.Module
+          The VGG16 neural network model.
+      device : torch.device
+          The device (CPU or GPU) on which the model is placed.
+      hook_outputs : dict
+          Dictionary to store outputs from hooked layers.
+      """
+
+      def __init__(
+          self,
+          name: str,
+          weights_path: Optional[str] = None,
+          extract_layers: Optional[Union[str, List[str]]] = 'classifier.3',
+          preprocess_function: Optional[Callable[[Any], Any]] = None
+      ):
+
+  class DinoModel(BaseModel):
+      """
+      A DINO model implementation for face recognition tasks.
+
+      This class initializes a DINO model using the specified version, handles image
+      preprocessing, and provides methods for forwarding inputs through the model.
+
+      Attributes
+      ----------
+      name : str
+          The name of the model.
+      version : str
+          The version identifier for the DINO model.
+      model : torch.nn.Module
+          The DINO neural network model.
+      processor : transformers.AutoImageProcessor
+          The image processor for preparing inputs.
+      device : torch.device
+          The device (CPU or GPU) on which the model is placed.
+      hook_outputs : dict
+          Dictionary to store outputs from hooked layers.
+      """
+
+      def __init__(
+          self, 
+          name: str, 
+          version: str = 'facebook/dinov2-base'
+      ):
+
+  class AccuracyTask(BaseTask):
+      """
+      A task that evaluates the accuracy of the model's predictions.
+
+      Attributes
+      ----------
+      true_label : str
+          Column name in the pairs DataFrame indicating the ground truth labels.
+      distance_metric_name : str
+          Name of the distance metric used.
+
+      Methods
+      -------
+      compute_task_performance(pairs_distances_df: pd.DataFrame) -> pd.DataFrame
+          Computes the accuracy, AUC, and optimal threshold for the task.
+      plot(output_dir: str, performances: pd.DataFrame, *optional: Any) -> None
+          Generates and saves a bar plot of accuracy scores.
+      """
+
+      def __init__(
+          self,
+          name: str,
+          pairs_file_path: str,
+          images_path: str,
+          distance_metric: Callable[[Any, Any], float],
+          true_label: str
+      ) -> None:
+
+  class MultiModelTaskManager:
+      """
+      Manages multiple models and tasks, facilitating the computation of task performance across models.
+
+      Attributes
+      ----------
+      tasks : Dict[str, BaseTask]
+          Dictionary of task instances, keyed by task name.
+      models : Dict[str, BaseModel]
+          Dictionary of model instances, keyed by model name.
+      model_task_distances_dfs : Dict[str, Dict[str, pd.DataFrame]]
+          Nested dictionary storing computed distances for each model and task.
+      tasks_performance_dfs : Dict[str, pd.DataFrame]
+          Dictionary storing performance DataFrames for each task.
+      batch_size : int
+          Batch size for data loading.
+
+      Methods
+      -------
+      add_tasks(tasks: Union[BaseTask, List[BaseTask]]) -> None
+          Adds tasks to the manager.
+      add_models(models: Union[BaseModel, List[BaseModel]]) -> None
+          Adds models to the manager.
+      export_computed_metrics(export_path: str) -> None
+          Exports computed metrics for each model and task to CSV files.
+      export_model_results_by_task(export_path: str) -> None
+          Exports the model results grouped by task type and generates plots.
+      export_unified_summary(export_path: str = os.getcwd()) -> None
+          Exports a unified summary CSV file with performance metrics.
+      run_task(model_name: str, task_name: str, export_path: str = os.getcwd(), print_log: bool = False) -> None
+          Runs a specific task on a specific model.
+      run_task_with_all_models(task_name: str, export_path: str = os.getcwd(), print_log: bool = False) -> None
+          Runs a specific task on all models and exports the results.
+      run_all_tasks_with_model(model_name: str, export_path: str = os.getcwd(), print_log: bool = False) -> None
+          Runs all tasks on a specific model and exports the results.
+      run_all_tasks_all_models(export_path: str = os.getcwd(), print_log: bool = False) -> None
+          Runs all tasks on all models and exports the results.
+      """
+
+      def __init__(
+          self,
+          models: Union[BaseModel, List[BaseModel]],
+          tasks: Union[BaseTask, List[BaseTask]],
+          batch_size: int = 32
+      ) -> None:
+  ```
+</details>
+
+> Requirements:
+>
+> Implement run_benchmark.py following the structure outlined above.
+> Ensure proper error handling and logging.
+> Optionally, handle configurations via command-line arguments.
+> Make sure all dependencies are correctly imported and utilized.
+> Please generate the run_benchmark.py script based on the provided information.
+
+<details>
+  <summary>ChatGPT Example Result</summary>
+
+  ```python
+  import pandas as pd
+  from your_module import Vgg16Model, DinoModel, AccuracyTask, MultiModelTaskManager
+
+  # Define paths to the required files
+  img_path = 'path/to/img/folder'
+  pairs_file_path = 'path/to/pair_file.csv'
+  weights_path = 'path/to/weights_file.pth'
+
+  # Create model instances
+  vgg_model = Vgg16Model(
+      name='VGG16_Face_Recognition',
+      weights_path=weights_path,
+      extract_layers='classifier.3'  # Specify which layer's output to extract
+  )
+
+  dino_model = DinoModel(
+      name='DINO_Face_Recognition',
+      version='facebook/dinov2-base'  # Specify the version of DINO
+  )
+
+  # Create a distance metric function (you can replace this with the actual implementation)
+  def example_distance_metric(a, b):
+      # Replace with actual distance metric calculation
+      return ((a - b) ** 2).sum() ** 0.5
+
+  # Create task instance
+  accuracy_task = AccuracyTask(
+      name='Accuracy_Evaluation',
+      pairs_file_path=pairs_file_path,
+      images_path=img_path,
+      distance_metric=example_distance_metric,
+      true_label='true_label_column'  # Replace with the actual true label column name
+  )
+
+  # Initialize the MultiModelTaskManager
+  task_manager = MultiModelTaskManager(
+      models=[vgg_model, dino_model],
+      tasks=[accuracy_task],
+      batch_size=32
+  )
+
+  # Run all tasks on all models and export results
+  task_manager.run_all_tasks_all_models(export_path='path/to/export_directory', print_log=True)
+
+  # Optional: If you want to run a specific task with a specific model, uncomment below
+  # task_manager.run_task(model_name='VGG16_Face_Recognition', task_name='Accuracy_Evaluation', export_path='path/to/export_directory', print_log=True)
+  ```
+</details>
+
 #### Generating a New Model
 
 **Prompt:** 
@@ -985,6 +992,97 @@ if __name__ == '__main__':
   # CustomTask.plot('output_directory', performances_dataframe, distances_dataframe)
   ```
 </details>
+
+## Exported Results
+
+The Face Recognition Benchmarking Tool generates various CSV files and plots as part of the evaluation process. These outputs provide detailed insights into model performances across different tasks and facilitate comprehensive analysis.
+
+### CSV Files
+
+After running experiments, the tool exports several CSV files containing the computed metrics and distances. These files are saved in the specified output directory and are organized per model and task.
+
+1. **Pairwise Distances CSVs**:
+   - **Filename Format**: `model_name_task_name_pairs_distances.csv`
+   - **Description**: Contains the computed distances between image pairs for each model and task combination. The CSV includes the following columns:
+     - `img1`: Filename of the first image in the pair.
+     - `img2`: Filename of the second image in the pair.
+     - `model_computed_distance`: The distance between the embeddings of `img1` and `img2` as computed by the model.
+     - Additional columns from the original pairs file (e.g., labels, conditions).
+
+2. **Task Performance Metrics CSVs**:
+   - **Filename Format**: `model_name_task_name_performance_metrics.csv`
+   - **Description**: Contains the performance metrics computed for each model and task. The metrics vary depending on the task but may include accuracy, AUC, correlation coefficients, mean distances, etc. The CSV includes columns such as:
+     - `Task Name`: Name of the task.
+     - `Model Name`: Name of the model.
+     - `Layer Name`: Name of the layer (if layer-wise analysis is performed).
+     - Metric columns specific to the task (e.g., `Accuracy`, `AUC`, `Correlation Score`).
+
+3. **Unified Summary CSV**:
+   - **Filename**: `models_unified_results.csv`
+   - **Description**: Provides a consolidated view of all models and tasks in a single CSV file. Each row corresponds to a model and layer, and columns represent the performance metrics from different tasks. This summary facilitates easy comparison across models and tasks.
+   - **Columns**:
+     - `Model Name`
+     - `Layer Name`
+     - Task-specific metric columns (e.g., `AccuracyTask: Accuracy`, `CorrelationTask: Correlation Score`).
+
+### Plots
+
+The tool generates various plots to visualize the performance of models across tasks. These plots are saved in the output directory, typically in PNG format.
+
+1. **Bar Plots**:
+   - **Purpose**: Compare performance metrics across models and layers.
+   - **Generated For**:
+     - Accuracy scores.
+     - Correlation coefficients.
+     - Mean values under different conditions.
+     - Relative differences between groups.
+   - **Filename Format**: `task_name_metric_name_comparison.png`
+   - **Description**: Displays a bar chart where the x-axis represents the models (and layers, if applicable), and the y-axis represents the metric value. Useful for quickly assessing which models perform better on a specific task.
+
+2. **Scatter Plots**:
+   - **Purpose**: Visualize the relationship between model-computed distances and true distances or human-annotated scores.
+   - **Generated For**:
+     - Correlation tasks where the relationship between computed distances and true distances is analyzed.
+   - **Filename Format**: `task_name_scatters_comparison.png`
+   - **Description**: Plots each pair's computed distance against the true distance, allowing visualization of the correlation between them.
+
+3. **Conditioned Plots**:
+   - **Purpose**: Analyze model performance under different conditions or groups.
+   - **Generated For**:
+     - Tasks that involve conditions or group comparisons (e.g., `ConditionedAverageDistances`, `RelativeDifferenceTask`).
+   - **Filename Format**: `task_name_condition_name_comparison.png`
+   - **Description**: Bar plots that show performance metrics separately for each condition or group, facilitating the analysis of how models behave under different scenarios.
+
+### Output Directory Structure
+
+The results are organized in a structured manner within the specified output directory:
+
+- **Root Output Directory**:
+  - Contains the unified summary CSV (`models_unified_results.csv`).
+  - Contains plots that compare models across tasks.
+
+- **Per-Task Subdirectories**:
+  - Named after each task (e.g., `AccuracyTask`, `CorrelationTask`).
+  - Contain CSVs and plots specific to that task.
+  - **Files Included**:
+    - Pairwise distances CSVs.
+    - Task performance metrics CSVs.
+    - Task-specific plots.
+
+### Accessing and Interpreting Results
+
+- **CSV Files**:
+  - Can be opened using spreadsheet software or analyzed programmatically using tools like pandas.
+  - Enable detailed examination of individual model performances and pairwise comparisons.
+
+- **Plots**:
+  - Provide visual summaries that can be included in reports or presentations.
+  - Help in quickly identifying trends, outliers, and performance differences.
+
+### Customization
+
+- The filenames and output paths can be customized by modifying the parameters in the `MultiModelTaskManager` and task classes.
+- Additional plots or CSV exports can be implemented by extending the `plot` methods in the task classes or by processing the exported CSVs.
 
 # Contact
 

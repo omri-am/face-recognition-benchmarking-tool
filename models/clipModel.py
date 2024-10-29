@@ -15,7 +15,43 @@ install_clip()
 import clip
 
 class CLIPModel(BaseModel):
-    def __init__(self, name, version="ViT-B/32"):
+    """
+    A CLIP model implementation for face recognition tasks.
+
+    This class initializes a CLIP model with a specified version, handles image
+    preprocessing, and provides methods for forwarding inputs through the model.
+
+    Attributes
+    ----------
+    name : str
+        The name of the model.
+    version : str
+        The version identifier for the CLIP model.
+    model : torch.nn.Module
+        The CLIP visual neural network model.
+    preprocess : callable
+        Function to preprocess input images.
+    device : torch.device
+        The device (CPU or GPU) on which the model is placed.
+    hook_outputs : dict
+        Dictionary to store outputs from hooked layers.
+    """
+
+    def __init__(
+        self, 
+        name: str, 
+        version: str = "ViT-B/32"
+    ):
+        """
+        Initializes the CLIPModel.
+
+        Parameters
+        ----------
+        name : str
+            The name of the model.
+        version : str, optional
+            The version identifier for the CLIP model. Defaults to "ViT-B/32".
+        """
         self.version = version
         super().__init__(name=name)
 
