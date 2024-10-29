@@ -579,156 +579,157 @@ if __name__ == '__main__':
 > Runs all tasks on all models using the manager.
 > Exports the computed metrics to specified paths.
 > File Paths:
-
+>
 > Image path: 'path/to/img/folder'
 > Pairs file path: 'path/to/pair_file.csv'
 > Weights path: 'path/to/weights_file.pth'
 > Classes with Docstrings:
-<details>
-  <summary>docstrings and class signature for the desired models, tasks and MultiModelTaskManager</summary>
-  
-  ```python
-  class Vgg16Model(BaseModel):
-      """
-      A VGG16 model implementation for face recognition tasks.
-
-      This class initializes a VGG16 model, optionally loading pre-trained weights.
-      It allows extraction of specific layers and provides methods for preprocessing
-      images and forwarding inputs through the model.
-
-      Attributes
-      ----------
-      name : str
-          The name of the model.
-      weights_path : str or None
-          Path to the model's weights file (.pth extention). If None, default pre-trained weights are used.
-      extract_layers : str or list of str
-          Layer(s) from which to extract outputs.
-      preprocess_function : callable or None
-          Function to preprocess input images.
-      num_identities : int or None
-          Number of identities (classes) in the model, set if weights are loaded.
-      model : torch.nn.Module
-          The VGG16 neural network model.
-      device : torch.device
-          The device (CPU or GPU) on which the model is placed.
-      hook_outputs : dict
-          Dictionary to store outputs from hooked layers.
-      """
-
-      def __init__(
-          self,
-          name: str,
-          weights_path: Optional[str] = None,
-          extract_layers: Optional[Union[str, List[str]]] = 'classifier.3',
-          preprocess_function: Optional[Callable[[Any], Any]] = None
-      ):
-
-  class DinoModel(BaseModel):
-      """
-      A DINO model implementation for face recognition tasks.
-
-      This class initializes a DINO model using the specified version, handles image
-      preprocessing, and provides methods for forwarding inputs through the model.
-
-      Attributes
-      ----------
-      name : str
-          The name of the model.
-      version : str
-          The version identifier for the DINO model.
-      model : torch.nn.Module
-          The DINO neural network model.
-      processor : transformers.AutoImageProcessor
-          The image processor for preparing inputs.
-      device : torch.device
-          The device (CPU or GPU) on which the model is placed.
-      hook_outputs : dict
-          Dictionary to store outputs from hooked layers.
-      """
-
-      def __init__(
-          self, 
-          name: str, 
-          version: str = 'facebook/dinov2-base'
-      ):
-
-  class AccuracyTask(BaseTask):
-      """
-      A task that evaluates the accuracy of the model's predictions.
-
-      Attributes
-      ----------
-      true_label : str
-          Column name in the pairs DataFrame indicating the ground truth labels.
-      distance_metric_name : str
-          Name of the distance metric used.
-
-      Methods
-      -------
-      compute_task_performance(pairs_distances_df: pd.DataFrame) -> pd.DataFrame
-          Computes the accuracy, AUC, and optimal threshold for the task.
-      plot(output_dir: str, performances: pd.DataFrame, *optional: Any) -> None
-          Generates and saves a bar plot of accuracy scores.
-      """
-
-      def __init__(
-          self,
-          name: str,
-          pairs_file_path: str,
-          images_path: str,
-          distance_metric: Callable[[Any, Any], float],
-          true_label: str
-      ) -> None:
-
-  class MultiModelTaskManager:
-      """
-      Manages multiple models and tasks, facilitating the computation of task performance across models.
-
-      Attributes
-      ----------
-      tasks : Dict[str, BaseTask]
-          Dictionary of task instances, keyed by task name.
-      models : Dict[str, BaseModel]
-          Dictionary of model instances, keyed by model name.
-      model_task_distances_dfs : Dict[str, Dict[str, pd.DataFrame]]
-          Nested dictionary storing computed distances for each model and task.
-      tasks_performance_dfs : Dict[str, pd.DataFrame]
-          Dictionary storing performance DataFrames for each task.
-      batch_size : int
-          Batch size for data loading.
-
-      Methods
-      -------
-      add_tasks(tasks: Union[BaseTask, List[BaseTask]]) -> None
-          Adds tasks to the manager.
-      add_models(models: Union[BaseModel, List[BaseModel]]) -> None
-          Adds models to the manager.
-      export_computed_metrics(export_path: str) -> None
-          Exports computed metrics for each model and task to CSV files.
-      export_model_results_by_task(export_path: str) -> None
-          Exports the model results grouped by task type and generates plots.
-      export_unified_summary(export_path: str = os.getcwd()) -> None
-          Exports a unified summary CSV file with performance metrics.
-      run_task(model_name: str, task_name: str, export_path: str = os.getcwd(), print_log: bool = False) -> None
-          Runs a specific task on a specific model.
-      run_task_with_all_models(task_name: str, export_path: str = os.getcwd(), print_log: bool = False) -> None
-          Runs a specific task on all models and exports the results.
-      run_all_tasks_with_model(model_name: str, export_path: str = os.getcwd(), print_log: bool = False) -> None
-          Runs all tasks on a specific model and exports the results.
-      run_all_tasks_all_models(export_path: str = os.getcwd(), print_log: bool = False) -> None
-          Runs all tasks on all models and exports the results.
-      """
-
-      def __init__(
-          self,
-          models: Union[BaseModel, List[BaseModel]],
-          tasks: Union[BaseTask, List[BaseTask]],
-          batch_size: int = 32
-      ) -> None:
-  ```
-</details>
-
+>
+> <details>
+>   <summary>docstrings and class signature for the desired models, tasks and MultiModelTaskManager</summary>
+>   
+>   ```python
+>   class Vgg16Model(BaseModel):
+>       """
+>       A VGG16 model implementation for face recognition tasks.
+> 
+>       This class initializes a VGG16 model, optionally loading pre-trained weights.
+>       It allows extraction of specific layers and provides methods for preprocessing
+>       images and forwarding inputs through the model.
+> 
+>       Attributes
+>       ----------
+>       name : str
+>           The name of the model.
+>       weights_path : str or None
+>           Path to the model's weights file (.pth extention). If None, default pre-trained weights are used.
+>       extract_layers : str or list of str
+>           Layer(s) from which to extract outputs.
+>       preprocess_function : callable or None
+>           Function to preprocess input images.
+>       num_identities : int or None
+>           Number of identities (classes) in the model, set if weights are loaded.
+>       model : torch.nn.Module
+>           The VGG16 neural network model.
+>       device : torch.device
+>           The device (CPU or GPU) on which the model is placed.
+>       hook_outputs : dict
+>           Dictionary to store outputs from hooked layers.
+>       """
+> 
+>       def __init__(
+>           self,
+>           name: str,
+>           weights_path: Optional[str] = None,
+>           extract_layers: Optional[Union[str, List[str]]] = 'classifier.3',
+>           preprocess_function: Optional[Callable[[Any], Any]] = None
+>       ):
+> 
+>   class DinoModel(BaseModel):
+>       """
+>       A DINO model implementation for face recognition tasks.
+> 
+>       This class initializes a DINO model using the specified version, handles image
+>       preprocessing, and provides methods for forwarding inputs through the model.
+> 
+>       Attributes
+>       ----------
+>       name : str
+>           The name of the model.
+>       version : str
+>           The version identifier for the DINO model.
+>       model : torch.nn.Module
+>           The DINO neural network model.
+>       processor : transformers.AutoImageProcessor
+>           The image processor for preparing inputs.
+>       device : torch.device
+>           The device (CPU or GPU) on which the model is placed.
+>       hook_outputs : dict
+>           Dictionary to store outputs from hooked layers.
+>       """
+> 
+>       def __init__(
+>           self, 
+>           name: str, 
+>           version: str = 'facebook/dinov2-base'
+>       ):
+> 
+>   class AccuracyTask(BaseTask):
+>       """
+>       A task that evaluates the accuracy of the model's predictions.
+> 
+>       Attributes
+>       ----------
+>       true_label : str
+>           Column name in the pairs DataFrame indicating the ground truth labels.
+>       distance_metric_name : str
+>           Name of the distance metric used.
+> 
+>       Methods
+>       -------
+>       compute_task_performance(pairs_distances_df: pd.DataFrame) -> pd.DataFrame
+>           Computes the accuracy, AUC, and optimal threshold for the task.
+>       plot(output_dir: str, performances: pd.DataFrame, *optional: Any) -> None
+>           Generates and saves a bar plot of accuracy scores.
+>       """
+> 
+>       def __init__(
+>           self,
+>           name: str,
+>           pairs_file_path: str,
+>           images_path: str,
+>           distance_metric: Callable[[Any, Any], float],
+>           true_label: str
+>       ) -> None:
+> 
+>   class MultiModelTaskManager:
+>       """
+>       Manages multiple models and tasks, facilitating the computation of task performance across models.
+> 
+>       Attributes
+>       ----------
+>       tasks : Dict[str, BaseTask]
+>           Dictionary of task instances, keyed by task name.
+>       models : Dict[str, BaseModel]
+>           Dictionary of model instances, keyed by model name.
+>       model_task_distances_dfs : Dict[str, Dict[str, pd.DataFrame]]
+>           Nested dictionary storing computed distances for each model and task.
+>       tasks_performance_dfs : Dict[str, pd.DataFrame]
+>           Dictionary storing performance DataFrames for each task.
+>       batch_size : int
+>           Batch size for data loading.
+> 
+>       Methods
+>       -------
+>       add_tasks(tasks: Union[BaseTask, List[BaseTask]]) -> None
+>           Adds tasks to the manager.
+>       add_models(models: Union[BaseModel, List[BaseModel]]) -> None
+>           Adds models to the manager.
+>       export_computed_metrics(export_path: str) -> None
+>           Exports computed metrics for each model and task to CSV files.
+>       export_model_results_by_task(export_path: str) -> None
+>           Exports the model results grouped by task type and generates plots.
+>       export_unified_summary(export_path: str = os.getcwd()) -> None
+>           Exports a unified summary CSV file with performance metrics.
+>       run_task(model_name: str, task_name: str, export_path: str = os.getcwd(), print_log: bool = False) -> None
+>           Runs a specific task on a specific model.
+>       run_task_with_all_models(task_name: str, export_path: str = os.getcwd(), print_log: bool = False) -> None
+>           Runs a specific task on all models and exports the results.
+>       run_all_tasks_with_model(model_name: str, export_path: str = os.getcwd(), print_log: bool = False) -> None
+>           Runs all tasks on a specific model and exports the results.
+>       run_all_tasks_all_models(export_path: str = os.getcwd(), print_log: bool = False) -> None
+>           Runs all tasks on all models and exports the results.
+>       """
+> 
+>       def __init__(
+>           self,
+>           models: Union[BaseModel, List[BaseModel]],
+>           tasks: Union[BaseTask, List[BaseTask]],
+>           batch_size: int = 32
+>       ) -> None:
+>   ```
+> </details>
+>
 > Requirements:
 >
 > Implement run_benchmark.py following the structure outlined above.
@@ -741,52 +742,59 @@ if __name__ == '__main__':
   <summary>ChatGPT Example Result</summary>
 
   ```python
+  import os
+  import logging
   import pandas as pd
-  from your_module import Vgg16Model, DinoModel, AccuracyTask, MultiModelTaskManager
+  from models import Vgg16Model, DinoModel, CLIPModel  # Assuming models are in models.py
+  from tasks import AccuracyTask  # Assuming tasks are in tasks.py
+  from task_manager import MultiModelTaskManager  # Assuming task manager is in task_manager.py
 
-  # Define paths to the required files
-  img_path = 'path/to/img/folder'
-  pairs_file_path = 'path/to/pair_file.csv'
-  weights_path = 'path/to/weights_file.pth'
+  # Configure logging
+  logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-  # Create model instances
-  vgg_model = Vgg16Model(
-      name='VGG16_Face_Recognition',
-      weights_path=weights_path,
-      extract_layers='classifier.3'  # Specify which layer's output to extract
-  )
+  def main():
+      try:
+          # File Paths
+          image_path = 'path/to/img/folder'
+          pairs_file_path = 'path/to/pair_file.csv'
+          weights_path = 'path/to/weights_file.pth'
 
-  dino_model = DinoModel(
-      name='DINO_Face_Recognition',
-      version='facebook/dinov2-base'  # Specify the version of DINO
-  )
+          # Initialize models
+          vgg16_model = Vgg16Model(name='VGG16', weights_path=weights_path)
+          dino_model = DinoModel(name='DINO')
+          clip_model = CLIPModel(name='CLIP')  # Assuming CLIPModel also exists
 
-  # Create a distance metric function (you can replace this with the actual implementation)
-  def example_distance_metric(a, b):
-      # Replace with actual distance metric calculation
-      return ((a - b) ** 2).sum() ** 0.5
+          models = [vgg16_model, dino_model, clip_model]
 
-  # Create task instance
-  accuracy_task = AccuracyTask(
-      name='Accuracy_Evaluation',
-      pairs_file_path=pairs_file_path,
-      images_path=img_path,
-      distance_metric=example_distance_metric,
-      true_label='true_label_column'  # Replace with the actual true label column name
-  )
+          # Initialize tasks
+          distance_metric = lambda x, y: ...  # Define your distance metric function
+          accuracy_task = AccuracyTask(
+              name='AccuracyTask',
+              pairs_file_path=pairs_file_path,
+              images_path=image_path,
+              distance_metric=distance_metric,
+              true_label='true_label'  # Specify the actual column name
+          )
 
-  # Initialize the MultiModelTaskManager
-  task_manager = MultiModelTaskManager(
-      models=[vgg_model, dino_model],
-      tasks=[accuracy_task],
-      batch_size=32
-  )
+          tasks = [accuracy_task]
 
-  # Run all tasks on all models and export results
-  task_manager.run_all_tasks_all_models(export_path='path/to/export_directory', print_log=True)
+          # Create task manager
+          task_manager = MultiModelTaskManager(models=models, tasks=tasks)
 
-  # Optional: If you want to run a specific task with a specific model, uncomment below
-  # task_manager.run_task(model_name='VGG16_Face_Recognition', task_name='Accuracy_Evaluation', export_path='path/to/export_directory', print_log=True)
+          # Run all tasks on all models
+          task_manager.run_all_tasks_all_models(export_path=os.getcwd(), print_log=True)
+
+          # Export computed metrics
+          export_path = 'path/to/export/directory'
+          task_manager.export_computed_metrics(export_path)
+
+          logging.info("Benchmarking completed successfully.")
+      
+      except Exception as e:
+          logging.error(f"An error occurred: {e}")
+
+  if __name__ == "__main__":
+      main()
   ```
 </details>
 
