@@ -237,6 +237,7 @@ The following tasks have been implemented by extending `BaseTask`:
 Computes the accuracy of the model by comparing the predicted similarities against true labels.
 <details>
   <summary>AccuracyTask Class Code<summary>
+
   ```python
   class AccuracyTask(BaseTask):
       def __init__(
@@ -296,6 +297,7 @@ Computes the accuracy of the model by comparing the predicted similarities again
 Computes the correlation between the model-computed distances and given distances.
 <details>
   <summary>CorrelationTask Class Code<summary>
+
   ```python
   class CorrelationTask(BaseTask):
       def __init__(
@@ -367,6 +369,7 @@ Computes the correlation between the model-computed distances and given distance
 Computes the average distances for different conditions specified in the pairs file.
 <details>
   <summary>ConditionedAverageDistances Class Code<summary>
+
   ```python
   class ConditionedAverageDistances(BaseTask):
       def __init__(
@@ -425,6 +428,7 @@ Computes the average distances for different conditions specified in the pairs f
 Calculates the relative difference between two groups, useful for tasks like evaluating the Thatcher effect.
 <details>
   <summary>ConditionedAverageDistances Class Code<summary>
+
   ```python
   class RelativeDifferenceTask(BaseTask):
       def __init__(
