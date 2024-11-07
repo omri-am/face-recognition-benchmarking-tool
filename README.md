@@ -569,19 +569,18 @@ if __name__ == '__main__':
 
 **Prompt:**
 
-> I am working on a Python project called the Face Recognition Benchmarking Tool, which allows me to run multiple neural network (NN) models on different tasks easily. All the needed files are in the same folder as my python file. I need assistance in creating a Python script (run_benchmark.py) that:
+> I am working on a Python project called the Face Recognition Benchmarking Tool, which allows me to run multiple neural network (NN) models on different tasks easily. All the needed files are in the same folder as my python file. I need assistance in creating a Python file (run_benchmark.py) that will:
+> - Imports all necessary classes and modules.
+> - Initializes the models Vgg16Model, DinoModel and CLIPModel with appropriate parameters.
+> - Initializes the AccuracyTask with the provided image paths and with pairwise.cosine_distances as the distance function.
+> - Creates an instance of MultiModelTaskManager, adding all models and tasks to it.
+> - Runs all tasks on all models using the manager.
+> - Exports the computed metrics to specified paths.
 >
-> Imports all necessary classes and modules.
-> Initializes the models (Vgg16Model, DinoModel, CLIPModel) with appropriate parameters, including loading weights if provided.
-> Initializes the AccuracyTask (and any other tasks) with the provided image paths and distance metrics.
-> Creates an instance of MultiModelTaskManager, adding all models and tasks to it.
-> Runs all tasks on all models using the manager.
-> Exports the computed metrics to specified paths.
 > File Paths:
->
-> Image path: 'path/to/img/folder'
-> Pairs file path: 'path/to/pair_file.csv'
-> Weights path: 'path/to/weights_file.pth'
+> - Image path: 'path/to/img/folder'
+> - Pairs file path: 'path/to/pair_file.csv'
+> - Weights path: 'path/to/weights_file.pth'
 > Classes with Docstrings:
 >
 > <details>
@@ -598,11 +597,11 @@ if __name__ == '__main__':
 > 
 >       Attributes
 >       ----------
->       name : str
+>       model_name : str
 >           The name of the model.
 >       weights_file_path : str or None
 >           Path to the model's weights file (.pth extention). If None, default pre-trained weights are used.
->       extract_layers : str or list of str
+>       layers_to_extract : str or list of str
 >           Layer(s) from which to extract outputs.
 >       preprocess_function : callable or None
 >           Function to preprocess input images.
@@ -618,9 +617,9 @@ if __name__ == '__main__':
 > 
 >       def __init__(
 >           self,
->           name: str,
+>           model_name: str,
 >           weights_file_path: Optional[str] = None,
->           extract_layers: Optional[Union[str, List[str]]] = 'classifier.3',
+>           layers_to_extract: Optional[Union[str, List[str]]] = 'classifier.3',
 >           preprocess_function: Optional[Callable[[Any], Any]] = None
 >       ):
 > 
@@ -633,7 +632,7 @@ if __name__ == '__main__':
 > 
 >       Attributes
 >       ----------
->       name : str
+>       model_name : str
 >           The name of the model.
 >       version : str
 >           The version identifier for the DINO model.
@@ -649,7 +648,7 @@ if __name__ == '__main__':
 > 
 >       def __init__(
 >           self, 
->           name: str, 
+>           model_name: str, 
 >           version: str = 'facebook/dinov2-base'
 >       ):
 > 
@@ -674,7 +673,7 @@ if __name__ == '__main__':
 > 
 >       def __init__(
 >           self,
->           name: str,
+>           task_name: str,
 >           pairs_file_path: str,
 >           images_folder_path: str,
 >           distance_function: Callable[[Any, Any], float],
@@ -728,73 +727,74 @@ if __name__ == '__main__':
 >       ) -> None:
 >   ```
 > </details>
->
-> Requirements:
->
-> Implement run_benchmark.py following the structure outlined above.
-> Ensure proper error handling and logging.
-> Optionally, handle configurations via command-line arguments.
-> Make sure all dependencies are correctly imported and utilized.
-> Please generate the run_benchmark.py script based on the provided information.
 
 <details>
   <summary>ChatGPT Example Result</summary>
 
   ```python
   import os
-  import logging
   import pandas as pd
-  from models import Vgg16Model, DinoModel, CLIPModel  # Assuming models are in models.py
-  from tasks import AccuracyTask  # Assuming tasks are in tasks.py
-  from task_manager import MultiModelTaskManager  # Assuming task manager is in task_manager.py
+  from sklearn.metrics.pairwise import cosine_distances
+  from models import Vgg16Model, DinoModel, CLIPModel  # Assuming the models are in 'models.py'
+  from tasks import AccuracyTask  # Assuming tasks are in 'tasks.py'
+  from task_manager import MultiModelTaskManager  # Assuming MultiModelTaskManager is in 'task_manager.py'
 
-  # Configure logging
-  logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+  def run_benchmark():
+      # File paths
+      images_folder_path = 'path/to/img/folder'
+      pairs_file_path = 'path/to/pair_file.csv'
+      weights_file_path = 'path/to/weights_file.pth'
+      export_path = 'path/to/export/folder'  # You can change this as needed
 
-  def main():
-      try:
-          # File Paths
-          image_path = 'path/to/img/folder'
-          pairs_file_path = 'path/to/pair_file.csv'
-          weights_file_path = 'path/to/weights_file.pth'
+      # 1. Initialize the models
+      vgg16_model = Vgg16Model(
+          model_name="VGG16",
+          weights_file_path=weights_file_path,  # If using pre-trained weights
+          layers_to_extract="classifier.3",  # Example layer for VGG16, adjust as necessary
+          preprocess_function=None  # Define preprocessing function if needed
+      )
 
-          # Initialize models
-          vgg16_model = Vgg16Model(name='VGG16', weights_file_path=weights_file_path)
-          dino_model = DinoModel(name='DINO')
-          clip_model = CLIPModel(name='CLIP')  # Assuming CLIPModel also exists
+      dino_model = DinoModel(
+          model_name="DINO",
+          version="facebook/dinov2-base"  # You can change the version if needed
+      )
 
-          models = [vgg16_model, dino_model, clip_model]
+      clip_model = CLIPModel(
+          model_name="CLIP",
+          # Add any necessary initialization parameters for the CLIP model
+      )
 
-          # Initialize tasks
-          distance_function = lambda x, y: ...  # Define your distance metric function
-          accuracy_task = AccuracyTask(
-              name='AccuracyTask',
-              pairs_file_path=pairs_file_path,
-              images_folder_path=image_path,
-              distance_function=distance_function,
-              true_label='true_label'  # Specify the actual column name
-          )
+      # 2. Initialize the task
+      accuracy_task = AccuracyTask(
+          task_name="Accuracy Evaluation",
+          pairs_file_path=pairs_file_path,
+          images_folder_path=images_folder_path,
+          distance_function=cosine_distances,
+          true_label="true_label_column"  # Change to the correct column name in the pairs file
+      )
 
-          tasks = [accuracy_task]
+      # 3. Create the task manager and add models and tasks
+      task_manager = MultiModelTaskManager(
+          models=[vgg16_model, dino_model, clip_model],
+          tasks=[accuracy_task],
+          batch_size=32  # You can adjust the batch size as needed
+      )
 
-          # Create task manager
-          task_manager = MultiModelTaskManager(models=models, tasks=tasks)
+      # 4. Run all tasks for all models
+      task_manager.run_all_tasks_all_models(export_path=export_path, print_log=True)
 
-          # Run all tasks on all models
-          task_manager.run_all_tasks_all_models(export_path=os.getcwd(), print_log=True)
+      # 5. Export the computed metrics
+      task_manager.export_computed_metrics(export_path)
 
-          # Export computed metrics
-          export_path = 'path/to/export/directory'
-          task_manager.export_computed_metrics(export_path)
+      # Optional: Export model results grouped by task
+      task_manager.export_model_results_by_task(export_path)
 
-          logging.info("Benchmarking completed successfully.")
-      
-      except Exception as e:
-          logging.error(f"An error occurred: {e}")
+      # Optional: Export a unified summary of all metrics
+      task_manager.export_unified_summary(export_path)
 
   if __name__ == "__main__":
-      main()
-  ```
+      run_benchmark()
+    ```
 </details>
 
 #### Generating a New Model
