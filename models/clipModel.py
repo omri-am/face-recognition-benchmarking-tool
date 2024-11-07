@@ -23,7 +23,7 @@ class CLIPModel(BaseModel):
 
     Attributes
     ----------
-    name : str
+    model_name : str
         The name of the model.
     version : str
         The version identifier for the CLIP model.
@@ -39,7 +39,7 @@ class CLIPModel(BaseModel):
 
     def __init__(
         self, 
-        name: str, 
+        model_name: str, 
         version: str = "ViT-B/32"
     ):
         """
@@ -47,13 +47,13 @@ class CLIPModel(BaseModel):
 
         Parameters
         ----------
-        name : str
+        model_name : str
             The name of the model.
         version : str, optional
             The version identifier for the CLIP model. Defaults to "ViT-B/32".
         """
         self.version = version
-        super().__init__(name=name)
+        super().__init__(model_name=model_name)
 
     def _build_model(self):
         self.model, self.preprocess = clip.load(self.version, device=self.device)

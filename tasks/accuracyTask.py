@@ -11,7 +11,7 @@ class AccuracyTask(BaseTask):
     ----------
     true_label : str
         Column name in the pairs DataFrame indicating the ground truth labels.
-    distance_metric_name : str
+    distance_function_name : str
         Name of the distance metric used.
 
     Methods
@@ -24,10 +24,10 @@ class AccuracyTask(BaseTask):
 
     def __init__(
         self,
-        name: str,
+        task_name: str,
         pairs_file_path: str,
-        images_path: str,
-        distance_metric: Callable[[Any, Any], float],
+        images_folder_path: str,
+        distance_function: Callable[[Any, Any], float],
         true_label: str
     ) -> None:
         """
@@ -35,22 +35,22 @@ class AccuracyTask(BaseTask):
 
         Parameters
         ----------
-        name : str
+        task_name : str
             The name of the task.
         pairs_file_path : str
             Path to the CSV file containing image pairs and labels.
-        images_path : str
+        images_folder_path : str
             Path to the directory containing images.
-        distance_metric : callable
+        distance_function : callable
             Function to compute the distance between image embeddings.
         true_label : str, optional
             Column name in the pairs file indicating the ground truth labels.
         """
         super().__init__(
-            name=name,
+            task_name=task_name,
             pairs_file_path=pairs_file_path,
-            images_path=images_path,
-            distance_metric=distance_metric
+            images_folder_path=images_folder_path,
+            distance_function=distance_function
         )
         if true_label not in self.pairs_df.columns:
             raise(Exception(f'The pairs file must contain a "{true_label}" column.'))
@@ -85,10 +85,10 @@ class AccuracyTask(BaseTask):
         accuracy = accuracy_score(y_true, y_pred)
 
         return pd.DataFrame({
-            'Accuracy': [round(accuracy, 5)],
-            'Optimal Threshold': [round(optimal_threshold, 5)],
-            'AUC': [round(auc, 5)],
-            'Distance Metric': [self.distance_metric_name]
+            'Accuracy': [accuracy],
+            'Optimal Threshold': [optimal_threshold],
+            'AUC': [auc],
+            'Distance Metric': [self.distance_function_name]
         })
 
     @staticmethod

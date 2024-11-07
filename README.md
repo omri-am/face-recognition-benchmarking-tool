@@ -89,8 +89,8 @@ To implement a new model, you need to create a subclass of `BaseModel` and imple
 
 ```python
 class CustomModel(BaseModel):
-    def __init__(self, name, weights_path=None, extract_layers=None, preprocess_function=None):
-        super().__init__(name=name, weights_path=weights_path, extract_layers=extract_layers, preprocess_function=preprocess_function)
+    def __init__(self, name, weights_file_path=None, extract_layers=None, preprocess_function=None):
+        super().__init__(name=name, weights_file_path=weights_file_path, extract_layers=extract_layers, preprocess_function=preprocess_function)
 
     def _build_model(self):
         # Define your custom model architecture
@@ -133,14 +133,14 @@ class BaseTask(ABC):
         self,
         name: str,
         pairs_file_path: str,
-        images_path: str,
-        distance_metric: Callable[[Any, Any], float] = pairwise.cosine_distances
+        images_folder_path: str,
+        distance_function: Callable[[Any, Any], float] = pairwise.cosine_distances
     ) -> None:
         self.name = name
         self.pairs_file_path = pairs_file_path
         self.pairs_df = self.__load_file(pairs_file_path)
-        self.images_path = self.__validate_path(images_path)
-        self.distance_metric, self.distance_metric_name = self.__validate_and_set_distance_metric(distance_metric)
+        self.images_folder_path = self.__validate_path(images_folder_path)
+        self.distance_function, self.distance_function_name = self.__validate_and_set_distance_function(distance_function)
 
     @abstractmethod
     def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
@@ -182,7 +182,7 @@ Computes the correlation between the model-computed distances and given distance
   - `'img1'`, `'img2'`: Image filenames.
   - `'distance'`: The ground truth distances between image pairs.
 - **Parameters**:
-  - `correlation_metric`: A callable to compute the correlation (e.g., `np.corrcoef`, `spearmanr`).
+  - `correlation_function`: A callable to compute the correlation (e.g., `np.corrcoef`, `spearmanr`).
 
 ##### ConditionedAverageDistances
 
@@ -223,15 +223,15 @@ Altough this is an open-source project, it is highly recommended to use the alre
           self,
           name: str,
           pairs_file_path: str,
-          images_path: str,
-          distance_metric: Callable[[Any, Any], float],
+          images_folder_path: str,
+          distance_function: Callable[[Any, Any], float],
           **kwargs
       ) -> None:
           super().__init__(
               name=name,
               pairs_file_path=pairs_file_path,
-              images_path=images_path,
-              distance_metric=distance_metric
+              images_folder_path=images_folder_path,
+              distance_function=distance_function
           )
           # Initialize any additional attributes here
 
@@ -405,14 +405,13 @@ Here's a brief overview of the main directories:
   - `baseModel.py`
   - `baseTask.py`
   - `multiModelTaskManager.py`
-- **tests_datasets/**: Contains datasets for testing and experiments, organized by task.
-- **benchmark_runner.py**: Script to define and run your experiments.
+- **benchmark_runner.py**: Project implementation and usage example..
 
 ### Usage
 
 #### Example: Running Experiments
 
-Below is an example of how to set up models and tasks, integrate them with the `MultiModelTaskManager`, and run experiments.
+Below is an example of how to set up models and tasks, integrate them with the `MultiModelTaskManager`, and run experiments. For a more through and in depth example, see the `benchmark_runner.py` file.
 
 ```python
 def main():
@@ -428,7 +427,7 @@ def main():
     # Initialize models
     vgg16_trained = Vgg16Model(
         name='VGG16-trained',
-        weights_path='/path/to/trained_weights.pth',
+        weights_file_path='/path/to/trained_weights.pth',
         extract_layers=['avgpool', 'classifier.5']
     )
     vgg16_untrained = Vgg16Model(
@@ -445,9 +444,9 @@ def main():
     lfw_accuracy_task = AccuracyTask(
         name='LFW Accuracy',
         pairs_file_path=lfw_pairs,
-        images_path=lfw_images,
+        images_folder_path=lfw_images,
         true_label='same',
-        distance_metric=batch_cosine_distance
+        distance_function=batch_cosine_distance
     )
 
     # Additional tasks can be initialized similarly
@@ -541,8 +540,8 @@ def main():
     custom_task = MyCustomTask(
         name='CustomTask',
         pairs_file_path='/path/to/pairs.csv',
-        images_path='/path/to/images',
-        distance_metric=your_custom_distance_function
+        images_folder_path='/path/to/images',
+        distance_function=your_custom_distance_function
     )
 
     # Initialize the manager
@@ -601,7 +600,7 @@ if __name__ == '__main__':
 >       ----------
 >       name : str
 >           The name of the model.
->       weights_path : str or None
+>       weights_file_path : str or None
 >           Path to the model's weights file (.pth extention). If None, default pre-trained weights are used.
 >       extract_layers : str or list of str
 >           Layer(s) from which to extract outputs.
@@ -620,7 +619,7 @@ if __name__ == '__main__':
 >       def __init__(
 >           self,
 >           name: str,
->           weights_path: Optional[str] = None,
+>           weights_file_path: Optional[str] = None,
 >           extract_layers: Optional[Union[str, List[str]]] = 'classifier.3',
 >           preprocess_function: Optional[Callable[[Any], Any]] = None
 >       ):
@@ -662,7 +661,7 @@ if __name__ == '__main__':
 >       ----------
 >       true_label : str
 >           Column name in the pairs DataFrame indicating the ground truth labels.
->       distance_metric_name : str
+>       distance_function_name : str
 >           Name of the distance metric used.
 > 
 >       Methods
@@ -677,8 +676,8 @@ if __name__ == '__main__':
 >           self,
 >           name: str,
 >           pairs_file_path: str,
->           images_path: str,
->           distance_metric: Callable[[Any, Any], float],
+>           images_folder_path: str,
+>           distance_function: Callable[[Any, Any], float],
 >           true_label: str
 >       ) -> None:
 > 
@@ -757,22 +756,22 @@ if __name__ == '__main__':
           # File Paths
           image_path = 'path/to/img/folder'
           pairs_file_path = 'path/to/pair_file.csv'
-          weights_path = 'path/to/weights_file.pth'
+          weights_file_path = 'path/to/weights_file.pth'
 
           # Initialize models
-          vgg16_model = Vgg16Model(name='VGG16', weights_path=weights_path)
+          vgg16_model = Vgg16Model(name='VGG16', weights_file_path=weights_file_path)
           dino_model = DinoModel(name='DINO')
           clip_model = CLIPModel(name='CLIP')  # Assuming CLIPModel also exists
 
           models = [vgg16_model, dino_model, clip_model]
 
           # Initialize tasks
-          distance_metric = lambda x, y: ...  # Define your distance metric function
+          distance_function = lambda x, y: ...  # Define your distance metric function
           accuracy_task = AccuracyTask(
               name='AccuracyTask',
               pairs_file_path=pairs_file_path,
-              images_path=image_path,
-              distance_metric=distance_metric,
+              images_folder_path=image_path,
+              distance_function=distance_function,
               true_label='true_label'  # Specify the actual column name
           )
 
@@ -824,13 +823,13 @@ if __name__ == '__main__':
   from PIL import Image
 
   class ResNetModel(BaseModel):
-      def __init__(self, name: str, weights_path: Optional[str] = None,
+      def __init__(self, name: str, weights_file_path: Optional[str] = None,
                   extract_layers: Union[str, List[str]] = 'layer4',
                   preprocess_function: Optional[Callable[[Any], Any]] = None) -> None:
-          super().__init__(name=name, weights_path=weights_path, extract_layers=extract_layers, preprocess_function=preprocess_function)
+          super().__init__(name=name, weights_file_path=weights_file_path, extract_layers=extract_layers, preprocess_function=preprocess_function)
 
       def _build_model(self) -> None:
-          model = models.resnet50(weights=models.ResNet50_Weights.DEFAULT if self.weights_path is None else None)
+          model = models.resnet50(weights=models.ResNet50_Weights.DEFAULT if self.weights_file_path is None else None)
 
           # If the number of identities is set, modify the last layer
           if self.num_identities is not None:
@@ -887,8 +886,8 @@ if __name__ == '__main__':
   from sklearn.metrics import mean_squared_error
 
   class MeanSquaredErrorTask(BaseTask):
-      def __init__(self, name: str, pairs_file_path: str, images_path: str) -> None:
-          super().__init__(name=name, pairs_file_path=pairs_file_path, images_path=images_path)
+      def __init__(self, name: str, pairs_file_path: str, images_folder_path: str) -> None:
+          super().__init__(name=name, pairs_file_path=pairs_file_path, images_folder_path=images_folder_path)
 
       def compute_task_performance(self, pairs_distances_df: pd.DataFrame) -> pd.DataFrame:
           """

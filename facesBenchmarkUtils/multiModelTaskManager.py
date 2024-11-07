@@ -180,7 +180,7 @@ class MultiModelTaskManager:
         if not isinstance(tasks, list):
             tasks = [tasks]
         for task in tasks:
-            self.tasks[task.name] = task
+            self.tasks[task.task_name] = task
 
     def add_models(self, models: Union[BaseModel, List[BaseModel]]) -> None:
         """
@@ -194,7 +194,7 @@ class MultiModelTaskManager:
         if not isinstance(models, list):
             models = [models]
         for model in models:
-            self.models[model.name] = model
+            self.models[model.model_name] = model
 
     def _group_tasks_by_type(self) -> Dict[type, pd.DataFrame]:
         """
@@ -217,27 +217,31 @@ class MultiModelTaskManager:
                 task_type_dfs[task_type] = pd.concat(df_list)
         return task_type_dfs
 
-    def _transform_condition_to_columns(self, df):
+    def _transform_condition_to_rows(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Reshapes a dataframe long to wide, creating new column for each condition with its computed value.
+        Reshapes the dataframe by concatenating 'Task Name' and 'Condition' into a single column,
+        converting each condition into a separate row with its mean value.
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            The input dataframe containing task performance data, including a 'Condition' column.
 
         Returns
         -------
-        DataFrame
-            Dataframe with new columns containing the original numeric values.
+        pd.DataFrame
+            A reshaped dataframe where each condition is a separate row.
         """
         if 'Condition' not in df.columns:
             return df
         df = df.copy()
-        numeric_column = next((col for col in df.columns if pd.api.types.is_numeric_dtype(df[col]) and col != 'Condition'), None)
-        if numeric_column is None:
-            raise ValueError("No numeric column found for processing.")
-        for condition in df['Condition'].unique():
-            new_column_name = f'{condition} {numeric_column}'
-            df[new_column_name] = df.apply(lambda x: x[numeric_column] if x['Condition'] == condition else None, axis=1)
-        
-        df.drop(columns=['Condition', numeric_column], inplace=True)
-        df_final = df.groupby(['Task Name', 'Model Name', 'Layer Name', 'Distance Metric']).first().reset_index()
+        numeric_columns = [col for col in df.columns if pd.api.types.is_numeric_dtype(df[col]) and col != 'Condition']
+        numeric_column = numeric_columns[0]
+
+        df['Task Name'] = df['Task Name'] + ' - ' + df['Condition'].astype(str)
+        group_columns = ['Task Name', 'Model Name', 'Layer Name', 'Distance Metric']
+
+        df_final = df.groupby(group_columns)[numeric_column].mean().reset_index()
         return df_final
 
     def export_computed_metrics(self, export_path: str) -> None:
@@ -299,7 +303,7 @@ class MultiModelTaskManager:
         """
         performance_dfs = []
         for _, task_performance_df in self.tasks_performance_dfs.items():
-            performance_dfs.append(self._transform_condition_to_columns(task_performance_df))
+            performance_dfs.append(self._transform_condition_to_rows(task_performance_df))
         all_performance_df = pd.concat(performance_dfs, ignore_index=True)
 
         non_metric_columns = all_performance_df.select_dtypes(exclude=[np.number]).columns.tolist()
@@ -368,7 +372,7 @@ class MultiModelTaskManager:
         selected_model = self.models[model_name]
         pairs_df = selected_task.pairs_df.copy()
 
-        images_folder_path = selected_task.images_path
+        images_folder_path = selected_task.images_folder_path
 
         dataset = PairDataset(pairs_df, images_folder_path, selected_model)
         if len(dataset) == 0:
@@ -426,7 +430,7 @@ class MultiModelTaskManager:
                 img2_tensors = img2_tensors.to(model.device, non_blocking=True)
                 batch_outputs1 = model.get_output(img1_tensors)
                 batch_outputs2 = model.get_output(img2_tensors)
-                layer_names = ['default'] if not model.extract_layers else model.extract_layers
+                layer_names = ['default'] if not model.layers_to_extract else model.layers_to_extract
 
                 batch_records = self._compute_distances_for_batch(
                     batch_outputs1, batch_outputs2, img1_names, img2_names, layer_names, task
@@ -482,7 +486,7 @@ class MultiModelTaskManager:
                 if tensor2.ndim == 1:
                     tensor2 = tensor2.unsqueeze(0)
 
-                d = task.distance_metric(tensor1, tensor2)
+                d = task.distance_function(tensor1, tensor2)
                 if isinstance(d, torch.Tensor):
                     d = d.item()
 

@@ -9,7 +9,7 @@ class RelativeDifferenceTask(BaseTask):
     ----------
     group_column : str
         Column name in the pairs DataFrame distinguishing between the two groups.
-    distance_metric_name : str
+    distance_function_name : str
         Name of the distance metric used.
 
     Methods
@@ -22,10 +22,10 @@ class RelativeDifferenceTask(BaseTask):
 
     def __init__(
         self,
-        name: str,
+        task_name: str,
         pairs_file_path: str,
-        images_path: str,
-        distance_metric: Callable[[Any, Any], float],
+        images_folder_path: str,
+        distance_function: Callable[[Any, Any], float],
         group_column: str
     ) -> None:
         """
@@ -33,22 +33,22 @@ class RelativeDifferenceTask(BaseTask):
 
         Parameters
         ----------
-        name : str
+        task_name : str
             The name of the task.
         pairs_file_path : str
             Path to the CSV file containing image pairs and group labels.
-        images_path : str
+        images_folder_path : str
             Path to the directory containing images.
-        distance_metric : callable
+        distance_function : callable
             Function to compute the distance between image embeddings.
         group_column : str
             Column name in the pairs file distinguishing between the two groups.
         """
         super().__init__(
-            name=name,
+            task_name=task_name,
             pairs_file_path=pairs_file_path,
-            images_path=images_path,
-            distance_metric=distance_metric
+            images_folder_path=images_folder_path,
+            distance_function=distance_function
         )
         if group_column not in self.pairs_df.columns:
             raise Exception(f'The pairs file must contain a "{group_column}" column.')
@@ -84,10 +84,10 @@ class RelativeDifferenceTask(BaseTask):
         relative_difference = (group1_mean - group2_mean) / (group1_mean + group2_mean)
 
         return pd.DataFrame({
-            f'{unique_groups[0]} Mean': [group1_mean],
-            f'{unique_groups[1]} Mean': [group2_mean],
-            'Relative Difference': [round(relative_difference, 5)],
-            'Distance Metric': [self.distance_metric_name]
+            f'Group "{unique_groups[0].capitalize()}" Mean': [group1_mean],
+            f'Group "{unique_groups[1].capitalize()}" Mean': [group2_mean],
+            'Relative Difference': [relative_difference],
+            'Distance Metric': [self.distance_function_name]
         })
 
     @staticmethod

@@ -4,10 +4,10 @@ from typing import Any, Callable
 class ConditionedAverageDistances(BaseTask):
     def __init__(
         self,
-        name: str,
+        task_name: str,
         pairs_file_path: str,
-        images_path: str,
-        distance_metric: Callable[[Any, Any], float],
+        images_folder_path: str,
+        distance_function: Callable[[Any, Any], float],
         condition_column: str,
         normalize: bool = True
     ) -> None:
@@ -16,13 +16,13 @@ class ConditionedAverageDistances(BaseTask):
 
         Parameters
         ----------
-        name : str
+        task_name : str
             The name of the task.
         pairs_file_path : str
             Path to the CSV file containing image pairs and condition labels.
-        images_path : str
+        images_folder_path : str
             Path to the directory containing images.
-        distance_metric : callable
+        distance_function : callable
             Function to compute the distance between image embeddings.
         condition_column : str
             Column name in the pairs file distinguishing between the different conditions.
@@ -30,10 +30,10 @@ class ConditionedAverageDistances(BaseTask):
             Boolean parameter for normializing the computed distances, by deviding each distance with the max distance computed. Default is True.
         """
         super().__init__(
-            name=name,
+            task_name=task_name,
             pairs_file_path=pairs_file_path,
-            images_path=images_path,
-            distance_metric=distance_metric
+            images_folder_path=images_folder_path,
+            distance_function=distance_function
         )
         self.normalize = normalize
         if condition_column not in self.pairs_df.columns:
@@ -64,9 +64,9 @@ class ConditionedAverageDistances(BaseTask):
 
         avg_distances = pairs_distances_df.groupby(['condition'])['normalized_distance'].mean().reset_index()
         
-        avg_distances.rename(columns={'normalized_distance': 'Mean Value', 'condition': 'Condition'}, inplace=True)
+        avg_distances.rename(columns={'normalized_distance': 'Mean', 'condition': 'Condition'}, inplace=True)
         
-        avg_distances['Distance Metric'] = self.distance_metric_name
+        avg_distances['Distance Metric'] = self.distance_function_name
 
         return avg_distances
     
@@ -98,7 +98,7 @@ class ConditionedAverageDistances(BaseTask):
                 performances=model_layer_df,
                 x='Condition',
                 xlabel='Condition',
-                y='Mean Value',
+                y='Mean',
                 ylabel='Average Distance',
                 title_prefix=f'Average Distance Comparison Across Conditions - {model_layer_name}',
                 output_dir=output_dir,

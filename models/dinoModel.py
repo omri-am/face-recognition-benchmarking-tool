@@ -45,7 +45,7 @@ class DinoModel(BaseModel):
 
     def __init__(
         self, 
-        name: str, 
+        model_name: str, 
         version: str = 'facebook/dinov2-base'
     ):
         """
@@ -53,13 +53,13 @@ class DinoModel(BaseModel):
 
         Parameters
         ----------
-        name : str
+        model_name : str
             The name of the model.
         version : str, optional
             The version identifier for the DINO model. Defaults to 'facebook/dinov2-base'.
         """
         self.version = version
-        super().__init__(name=name)
+        super().__init__(model_name=model_name)
 
     def _build_model(self):
         self.model = Dinov2Model.from_pretrained(self.version)

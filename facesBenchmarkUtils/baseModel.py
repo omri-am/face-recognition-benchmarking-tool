@@ -14,9 +14,9 @@ class BaseModel(ABC):
     ----------
     name : str
         The name of the model.
-    weights_path : str or None
+    weights_file_path : str or None
         Path to the model's weights file. If None, default weights are used.
-    extract_layers : list of str
+    layers_to_extract : list of str
         List of layer names from which to extract outputs.
     preprocess : callable
         Function to preprocess input images.
@@ -32,9 +32,9 @@ class BaseModel(ABC):
 
     def __init__(
         self,
-        name: str,
-        weights_path: Optional[str] = None,
-        extract_layers: Optional[Union[str, List[str]]] = None,
+        model_name: str,
+        weights_file_path: Optional[str] = None,
+        layers_to_extract: Optional[Union[str, List[str]]] = None,
         preprocess_function: Optional[Callable[[Any], Any]] = None
     ) -> None:
         """
@@ -42,30 +42,30 @@ class BaseModel(ABC):
 
         Parameters
         ----------
-        name : str
+        model_name : str
             The name of the model.
-        weights_path : str, optional
+        weights_file_path : str, optional
             Path to the model's weights file. If None, default weights are used.
-        extract_layers : str or list of str, optional
+        layers_to_extract : str or list of str, optional
             Layer name(s) from which to extract outputs.
         preprocess_function : callable, optional
             Function to preprocess input images. If None, a default preprocessing is used.
         """
         self.set_preprocess_function(preprocess_function)
         self.hook_outputs = {}
-        self.name = name
-        if isinstance(extract_layers, list):
-            self.extract_layers = extract_layers
-        elif extract_layers:
-            self.extract_layers = [extract_layers]
+        self.model_name = model_name
+        if isinstance(layers_to_extract, list):
+            self.layers_to_extract = layers_to_extract
+        elif layers_to_extract:
+            self.layers_to_extract = [layers_to_extract]
         else:
-            self.extract_layers = []
-        self.weights_path = weights_path
+            self.layers_to_extract = []
+        self.weights_file_path = weights_file_path
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.num_identities = self._set_num_identities() if weights_path else None
+        self.num_identities = self._set_num_identities() if weights_file_path else None
         self.model = None
         self._build_model()
-        if weights_path:
+        if weights_file_path:
             self._load_model()
         self.to()
         if self.model:
@@ -111,7 +111,7 @@ class BaseModel(ABC):
         int
             Number of identities in the model.
         """
-        checkpoint = torch.load(self.weights_path, map_location=self.device)
+        checkpoint = torch.load(self.weights_file_path, map_location=self.device)
         if 'state_dict' in checkpoint:
             last_key = list(checkpoint['state_dict'].keys())[-1]
             return checkpoint['state_dict'][last_key].shape[0]
@@ -123,7 +123,7 @@ class BaseModel(ABC):
         """
         Loads the model weights from the specified path.
         """
-        checkpoint = torch.load(self.weights_path, map_location=self.device)
+        checkpoint = torch.load(self.weights_file_path, map_location=self.device)
         state_dict = checkpoint.get('state_dict', checkpoint)
         state_dict = {k.replace('module.', ''): v for k, v in state_dict.items()}
         if self.model:
@@ -152,8 +152,8 @@ class BaseModel(ABC):
         """
         Registers forward hooks on specified layers to capture their outputs.
         """
-        if self.extract_layers:
-            for layer_name in self.extract_layers:
+        if self.layers_to_extract:
+            for layer_name in self.layers_to_extract:
                 layer = self._get_layer(layer_name)
                 if layer:
                     layer.register_forward_hook(self._get_hook_fn(layer_name))

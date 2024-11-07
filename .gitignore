@@ -4,3 +4,4 @@ FacesBenchmarkUtils/.DS_Store
 FacesBenchmarkUtils/__pycache__/
 results/
 *.csv
+test_file.py

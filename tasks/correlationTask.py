@@ -7,11 +7,11 @@ class CorrelationTask(BaseTask):
 
     Attributes
     ----------
-    correlation_metric : callable
+    correlation_function : callable
         The correlation metric to be used for evaluating the task.
-    distance_metric_name : str
+    distance_function_name : str
         Name of the distance metric used.
-    correlation_metric_name : str
+    correlation_function_name : str
         Name of the correlation metric used.
 
     Methods
@@ -24,37 +24,37 @@ class CorrelationTask(BaseTask):
 
     def __init__(
         self,
-        name: str,
+        task_name: str,
         pairs_file_path: str,
-        images_path: str,
-        distance_metric: Callable[[Any, Any], float],
-        correlation_metric: Callable[[Any, Any], np.ndarray] = np.corrcoef
+        images_folder_path: str,
+        distance_function: Callable[[Any, Any], float],
+        correlation_function: Callable[[Any, Any], np.ndarray] = np.corrcoef
     ) -> None:
         """
         Initializes the CorrelationTask instance.
 
         Parameters
         ----------
-        name : str
+        task_name : str
             The name of the task.
         pairs_file_path : str
             Path to the CSV file containing image pairs and true distances.
-        images_path : str
+        images_folder_path : str
             Path to the directory containing images.
-        distance_metric : callable
+        distance_function : callable
             Function to compute the distance between image embeddings.
-        correlation_metric : callable, optional
+        correlation_function : callable, optional
             Function to compute the correlation between computed distances and true distances.
             Defaults to numpy's corrcoef function.
         """
         super().__init__(
-            name=name,
+            task_name=task_name,
             pairs_file_path=pairs_file_path,
-            images_path=images_path,
-            distance_metric=distance_metric
+            images_folder_path=images_folder_path,
+            distance_function=distance_function
         )
-        self.correlation_metric = correlation_metric
-        self.correlation_metric_name = correlation_metric.__name__
+        self.correlation_function = correlation_function
+        self.correlation_function_name = correlation_function.__name__
         if 'distance' not in self.pairs_df.columns:
             raise Exception('The pairs file must contain a "distance" column.')
 
@@ -75,7 +75,7 @@ class CorrelationTask(BaseTask):
         computed_distances = pairs_distances_df['model_computed_distance'].values
         true_distances = self.pairs_df['distance'].values
 
-        correlation_result = self.correlation_metric(computed_distances, true_distances)
+        correlation_result = self.correlation_function(computed_distances, true_distances)
 
         if isinstance(correlation_result, np.ndarray):
             correlation = correlation_result[0, 1]
@@ -85,9 +85,9 @@ class CorrelationTask(BaseTask):
             correlation = correlation_result
 
         return pd.DataFrame({
-            'Correlation Score': [round(correlation, 5)],
-            'Distance Metric': [self.distance_metric_name],
-            'Correlation Metric':[self.correlation_metric_name]
+            'Correlation Score': [correlation],
+            'Distance Metric': [self.distance_function_name],
+            'Correlation Metric':[self.correlation_function_name]
         })
     
     @staticmethod
