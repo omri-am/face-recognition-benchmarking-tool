@@ -40,7 +40,8 @@ class CLIPModel(BaseModel):
     def __init__(
         self, 
         model_name: str, 
-        version: str = "ViT-B/32"
+        version: str = "ViT-B/32",
+        layers_to_extract: Optional[Union[str, List[str]]] = None
     ):
         """
         Initializes the CLIPModel.
@@ -53,7 +54,7 @@ class CLIPModel(BaseModel):
             The version identifier for the CLIP model. Defaults to "ViT-B/32".
         """
         self.version = version
-        super().__init__(model_name=model_name)
+        super().__init__(model_name=model_name, layers_to_extract=layers_to_extract)
 
     def _build_model(self):
         self.model, self.preprocess = clip.load(self.version, device=self.device)

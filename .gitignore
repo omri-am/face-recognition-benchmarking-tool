@@ -5,3 +5,4 @@ FacesBenchmarkUtils/__pycache__/
 results/
 *.csv
 preview_file.py
+preview_results/

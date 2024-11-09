@@ -46,7 +46,8 @@ class DinoModel(BaseModel):
     def __init__(
         self, 
         model_name: str, 
-        version: str = 'facebook/dinov2-base'
+        version: str = 'facebook/dinov2-base',
+        layers_to_extract: Optional[Union[str, List[str]]] = None
     ):
         """
         Initializes the DinoModel.
@@ -59,7 +60,7 @@ class DinoModel(BaseModel):
             The version identifier for the DINO model. Defaults to 'facebook/dinov2-base'.
         """
         self.version = version
-        super().__init__(model_name=model_name)
+        super().__init__(model_name=model_name, layers_to_extract=layers_to_extract)
 
     def _build_model(self):
         self.model = Dinov2Model.from_pretrained(self.version)
@@ -71,7 +72,6 @@ class DinoModel(BaseModel):
         if input_tensor.ndim == 3:
             input_tensor = input_tensor.unsqueeze(0)
         output = self.model(pixel_values=input_tensor)
-        # Return the last_hidden_state as default output
         return output.last_hidden_state
 
     def preprocess_image(self, image_path):

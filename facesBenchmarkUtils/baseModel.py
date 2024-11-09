@@ -223,12 +223,13 @@ class BaseModel(ABC):
         with torch.no_grad():
             output = self._forward(input_tensor)
             if self.hook_outputs:
-                outputs = {
-                    layer_name: out.detach().cpu().view(out.size(0), -1)
-                    for layer_name, out in self.hook_outputs.items()
-                }
+                outputs = {}
+                for layer_name, out in self.hook_outputs.items():
+                    if isinstance(out, tuple):
+                        out = out[0]
+                    outputs[layer_name] = out.detach().cpu().reshape(out.size(0), -1)
             else:
-                outputs = {'default': output.detach().cpu().view(output.size(0), -1)}
+                outputs = {'default': output.detach().cpu().reshape(output.size(0), -1)}
             return outputs
 
     def to(self) -> None:

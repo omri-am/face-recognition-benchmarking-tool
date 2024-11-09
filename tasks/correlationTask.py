@@ -125,7 +125,7 @@ class CorrelationTask(BaseTask):
             performances=performances,
             y='Correlation Score',
             ylabel='Correlation Coefficient (r)',
-            ylim=(0, 1.1),
+            ylim=(None, 1.1),
             title_prefix='Correlation Coefficient Comparison',
             output_dir=output_dir,
             file_name='correlation_comparison'

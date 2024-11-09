@@ -65,8 +65,9 @@ class PlotHelper:
             ax.set_xticklabels(labels, rotation=45, ha='right')
 
             for p in ax.patches:
+                pos = p.get_height() if p.get_height() > 0 else 0
                 ax.annotate(f'{p.get_height():.2f}',
-                            (p.get_x() + p.get_width() / 2., p.get_height()),
+                            (p.get_x() + p.get_width() / 2., pos),
                             ha='center', va='center', fontsize=14, color='black',
                             xytext=(0, 5), textcoords='offset points')
 
